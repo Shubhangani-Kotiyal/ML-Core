@@ -1,0 +1,7 @@
+/regression
+/kmeans
+/ml_core
+*.o
+*.exe
+*.dSYM/
+.DS_Store

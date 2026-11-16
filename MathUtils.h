@@ -3,7 +3,7 @@
 
 namespace MathUtils {
 
-    double mean(const double values[], int n) {
+    inline double mean(const double values[], int n) {
         double sum = 0;
 
         for (int i = 0; i < n; i++) {
@@ -13,7 +13,7 @@ namespace MathUtils {
         return sum / n;
     }
 
-    bool fitLine(const double x[], const double y[], int n,
+    inline bool fitLine(const double x[], const double y[], int n,
                  double &slope, double &intercept) {
         if (n < 2)
             return false;
@@ -38,11 +38,11 @@ namespace MathUtils {
         return true;
     }
 
-    double predictLine(double x, double slope, double intercept) {
+    inline double predictLine(double x, double slope, double intercept) {
         return slope * x + intercept;
     }
 
-    double meanSquaredError(const double actual[],
+    inline double meanSquaredError(const double actual[],
                             const double predicted[], int n) {
         double totalError = 0;
 
@@ -53,7 +53,6 @@ namespace MathUtils {
 
         return totalError / n;
     }
-}
 // Squared distance between two points.
 // K-Means can compare squared distances without using square roots.
 inline double squaredDistance(double x1, double y1,
@@ -87,5 +86,7 @@ inline int nearestCentroid(double x, double y,
 
     return nearest;
 }
+
+} // namespace MathUtils
 
 #endif
