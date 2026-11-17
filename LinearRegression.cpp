@@ -97,7 +97,7 @@ public:
     }
 };
 
-int main() {
+int runLinearRegression() {
     LinearRegression model;
 
     if (!model.loadData("linear_regression.csv"))

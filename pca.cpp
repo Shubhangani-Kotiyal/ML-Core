@@ -130,7 +130,7 @@ public:
     }
 };
 
-int main() {
+int runPCA() {
     PCA model;
 
     if (!model.loadData("pca.csv"))

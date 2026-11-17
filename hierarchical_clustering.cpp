@@ -183,7 +183,7 @@ public:
     }
 };
 
-int main() {
+int runHierarchicalClustering() {
     HierarchicalClustering model;
 
     if (!model.loadData("hierarchical_clustering.csv"))

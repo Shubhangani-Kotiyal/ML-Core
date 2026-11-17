@@ -160,7 +160,7 @@ public:
     }
 };
 
-int main() {
+int runSVM() {
     SVM model;
 
     if (!model.loadData("svm.csv"))

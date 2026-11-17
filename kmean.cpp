@@ -155,7 +155,7 @@ public:
     }
 };
 
-int main() {
+int runKMeans() {
     KMeans model;
 
     if (!model.loadData("kmeans.csv"))

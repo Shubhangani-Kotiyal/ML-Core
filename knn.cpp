@@ -143,7 +143,7 @@ public:
     }
 };
 
-int main() {
+int runKNN() {
     KNN model;
 
     if (!model.loadData("knn.csv"))
