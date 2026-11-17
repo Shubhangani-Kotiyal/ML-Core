@@ -186,7 +186,7 @@ public:
 int main() {
     HierarchicalClustering model;
 
-    if (!model.loadData("hierarchical.csv"))
+    if (!model.loadData("hierarchical_clustering.csv"))
         return 1;
 
     int target;

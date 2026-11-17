@@ -5,3 +5,6 @@
 *.exe
 *.dSYM/
 .DS_Store
+/svm
+/pca
+/hierarchical
