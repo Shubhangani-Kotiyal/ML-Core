@@ -100,7 +100,7 @@ public:
 int runLinearRegression() {
     LinearRegression model;
 
-    if (!model.loadData("linear_regression.csv"))
+    if (!model.loadData("datasets/linear_regression.csv"))
         return 1;
 
     if (!model.fit()) {

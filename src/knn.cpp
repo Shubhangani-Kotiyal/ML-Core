@@ -146,7 +146,7 @@ public:
 int runKNN() {
     KNN model;
 
-    if (!model.loadData("knn.csv"))
+    if (!model.loadData("datasets/knn.csv"))
         return 1;
 
     int k;

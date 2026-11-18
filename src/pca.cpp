@@ -133,7 +133,7 @@ public:
 int runPCA() {
     PCA model;
 
-    if (!model.loadData("pca.csv"))
+    if (!model.loadData("datasets/pca.csv"))
         return 1;
 
     if (!model.fit()) {

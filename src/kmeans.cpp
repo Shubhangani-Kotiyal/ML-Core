@@ -158,7 +158,7 @@ public:
 int runKMeans() {
     KMeans model;
 
-    if (!model.loadData("kmeans.csv"))
+    if (!model.loadData("datasets/kmeans.csv"))
         return 1;
 
     int k;

@@ -15,7 +15,7 @@
 | integration | Menu and changes affecting multiple algorithms |
 | documentation | Reports, presentations and instructions |
 
-Each branch contains the whole project so it can be compiled. Coordinate shared MathUtils.h edits with teammates.
+Each branch contains the whole project so it can be compiled. Coordinate shared include/MathUtils.h edits with teammates.
 
 ## Start work
 
@@ -37,7 +37,7 @@ If the local branch does not exist and Git cannot infer it, use git switch --tra
 Build with make and run ./ml_core. Exercise the modified algorithm and other algorithms affected by shared functions.
 
 ```bash
-git add knn.cpp knn.csv
+git add src/knn.cpp datasets/knn.csv
 git commit -m "Improve KNN input validation"
 git push origin knn
 ```
@@ -48,9 +48,11 @@ Members should use their own Git name and an email linked to their GitHub accoun
 
 ## Code conventions
 
-- Keep one main() in ml_algorithms_menu.cpp and preserve the six run function names.
-- Reuse MathUtils.h rather than repeating formulas.
+- Keep one main() in src/ml_algorithms_menu.cpp and preserve the six run function names.
+- Reuse include/MathUtils.h rather than repeating formulas.
 - Keep fixed-size arrays within bounds.
 - Keep CSV filenames consistent with loadData calls.
 - Do not upload compiled executables.
 - Document algorithm limitations and distinguish training results from held-out evaluation.
+
+Use task branches while work is active. After a pull request is merged, its branch can be deleted when nobody is using it. Existing algorithm branches may still show the previous layout; merge origin/main before editing. Do not delete branches containing unmerged work.

@@ -163,7 +163,7 @@ public:
 int runSVM() {
     SVM model;
 
-    if (!model.loadData("svm.csv"))
+    if (!model.loadData("datasets/svm.csv"))
         return 1;
 
     model.fit();

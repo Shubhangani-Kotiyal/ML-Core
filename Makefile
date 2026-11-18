@@ -1,12 +1,13 @@
 CXX = g++
+CPPFLAGS = -Iinclude
 CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic
-SOURCES = ml_algorithms_menu.cpp LinearRegression.cpp kmean.cpp svm.cpp hierarchical_clustering.cpp pca.cpp knn.cpp
+SOURCES = src/ml_algorithms_menu.cpp src/linear_regression.cpp src/kmeans.cpp src/svm.cpp src/hierarchical_clustering.cpp src/pca.cpp src/knn.cpp
 
 .PHONY: all run clean
 all: ml_core
 
-ml_core: $(SOURCES) MathUtils.h
-	$(CXX) $(CXXFLAGS) $(SOURCES) -o $@
+ml_core: $(SOURCES) include/MathUtils.h
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(SOURCES) -o $@
 
 run: ml_core
 	./ml_core

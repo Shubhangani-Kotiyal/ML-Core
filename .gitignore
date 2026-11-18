@@ -9,3 +9,6 @@
 /pca
 /hierarchical
 /knn
+__pycache__/
+*.py[cod]
+.venv/

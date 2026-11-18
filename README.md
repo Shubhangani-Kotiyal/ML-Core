@@ -14,24 +14,24 @@ make
 Without make:
 
 ```bash
-g++ -std=c++11 -Wall -Wextra -pedantic ml_algorithms_menu.cpp LinearRegression.cpp kmean.cpp svm.cpp hierarchical_clustering.cpp pca.cpp knn.cpp -o ml_core
+g++ -std=c++11 -Wall -Wextra -pedantic -Iinclude src/*.cpp -o ml_core
 ./ml_core
 ```
 
-Compile all seven source files together. Only ml_algorithms_menu.cpp defines main(). Each algorithm's run function creates its class object. MathUtils.h provides shared calculations.
+Compile all seven source files together. Only src/ml_algorithms_menu.cpp defines main(). Each algorithm's run function creates its class object. include/MathUtils.h provides shared calculations.
 
 ## Datasets
 
-Keep the CSV files in the working directory. Use commas, no header, finite numerical values and at most 100 rows.
+CSV files live in datasets/. Run the C++ program from the repository root. Use commas, no header, finite numerical values and at most 100 rows.
 
 | Algorithm | Source | Dataset | Columns |
 |---|---|---|---|
-| Linear Regression | LinearRegression.cpp | linear_regression.csv | x,y |
-| K-Means | kmean.cpp | kmeans.csv | x,y |
-| Linear SVM | svm.cpp | svm.csv | x,y,label (-1 or 1) |
-| Hierarchical Clustering | hierarchical_clustering.cpp | hierarchical_clustering.csv | x,y |
-| PCA | pca.cpp | pca.csv | x,y |
-| KNN | knn.cpp | knn.csv | x,y,integer label |
+| Linear Regression | src/linear_regression.cpp | datasets/linear_regression.csv | x,y |
+| K-Means | src/kmeans.cpp | datasets/kmeans.csv | x,y |
+| Linear SVM | src/svm.cpp | datasets/svm.csv | x,y,label (-1 or 1) |
+| Hierarchical Clustering | src/hierarchical_clustering.cpp | datasets/hierarchical_clustering.csv | x,y |
+| PCA | src/pca.cpp | datasets/pca.csv | x,y |
+| KNN | src/knn.cpp | datasets/knn.csv | x,y,integer label |
 
 Regression uses direct least squares for one input feature. SVM is linear and binary. Clustering and KNN use two features. Hierarchical clustering uses single linkage. PCA centers two features and projects onto one component.
 
@@ -48,7 +48,7 @@ The integrated menu has been compiled and exercised with all six included datase
 | PCA | No further input | Explained variance ratio about 0.963181 |
 | KNN | K=3, point 2 2 | Class 0 |
 
-These are small demonstration checks, not comprehensive validation. Training accuracy does not measure performance on unseen data. Broader evaluation, comparisons with standard implementations and charts remain pending. Invalid keyboard extraction ends the program; restart to try again.
+These are small demonstration checks, not comprehensive validation. Training accuracy does not measure performance on unseen data. A small comparison against scikit-learn is recorded in results/sample_checks.md. Broader evaluation and charts remain pending. Invalid keyboard extraction ends the program; restart to try again.
 
 ## Team workflow
 
@@ -59,7 +59,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch purposes and commands. Every w
 - reports/phase1/: report source and PDF.
 - reports/phase2/: report PDF.
 - reports/phase3/: placeholder; Phase 3 report still needs uploading.
-- presentations/: Phase 1 source and PDF; later presentations still need uploading.
+- presentations/phase1/: Phase 1 source and PDF; later presentations still need uploading.
 
 ## Team
 
@@ -68,3 +68,26 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch purposes and commands. Every w
 - Harshita Joshi
 
 Each member should commit their own work with their own Git identity.
+
+## Project folders
+
+| Folder | Contents |
+|---|---|
+| src/ | C++ classes and integrated menu |
+| include/ | Shared mathematical functions |
+| datasets/ | Six numerical datasets |
+| python/ | Scikit-learn reference menu and dependencies |
+| results/ | Recorded sample checks |
+| reports/ | Phase-wise reports |
+| presentations/ | Phase-wise presentations |
+
+## Python reference program
+
+```bash
+python3 -m pip install -r python/requirements.txt
+python3 python/ml_core_python.py
+```
+
+This reference uses NumPy and scikit-learn; the C++ implementation remains from scratch. Python resolves datasets relative to the script location. Cluster labels and PCA signs can differ without changing the solution. SVM uses a different solver and regularization setting, so its parameters need not match the C++ model.
+
+See [sample results](results/sample_checks.md) for smoke-test results.
