@@ -74,12 +74,27 @@ Each member should commit their own work with their own Git identity.
 | Folder | Contents |
 |---|---|
 | src/ | C++ classes and integrated menu |
-| include/ | Shared mathematical functions |
+| include/ | Shared mathematical functions and MLAlgorithm base class |
+| frontend/ | Interactive 2D visualization web dashboard with custom CSV upload |
 | datasets/ | Six numerical datasets |
 | python/ | Scikit-learn reference menu and dependencies |
 | results/ | Recorded sample checks |
 | reports/ | Phase-wise reports |
 | presentations/ | Phase-wise presentations |
+
+## Interactive Web Visualizer
+
+The project includes an interactive web dashboard located in `frontend/` that visually demonstrates all six algorithms on an interactive 2D coordinate canvas:
+- **Live Algorithm Simulations**: Real-time regression lines and residual errors, K-Means cluster stepping and auto-play, SVM hyperplanes and margin corridors, hierarchical single-linkage agglomeration, PCA 1D projection animations, and KNN neighborhood radar.
+- **Custom CSV Upload**: Upload or paste any custom CSV dataset, select any of the 6 algorithms, and the data is dynamically parsed, auto-scaled, and run in real time.
+- **Verification Dashboard**: Side-by-side C++ vs scikit-learn validation table and C++ class source code viewer.
+
+To run locally:
+```bash
+cd frontend
+python3 -m http.server 8085
+```
+Or open `frontend/index.html` directly in any web browser.
 
 ## Python reference program
 
