@@ -1,75 +1,17 @@
 #include <iostream>
-#include <fstream>
 #include "MathUtils.h"
+#include "MLAlgorithm.h"
 using namespace std;
 
-class KMeans {
+class KMeans : public MLAlgorithm {
 private:
-    double x[100], y[100];
     double centerX[10], centerY[10];
     int cluster[100];
-    int n, k;
+    int k;
 
 public:
     KMeans() {
-        n = 0;
         k = 0;
-    }
-
-    bool loadData(const char filename[]) {
-        ifstream file(filename);
-
-        if (!file) {
-            cout << "Unable to open the CSV file.\n";
-            return false;
-        }
-
-        n = 0;
-
-        while (true) {
-            file >> ws;
-
-            if (file.eof())
-                break;
-
-            if (n == 100) {
-                cout << "Maximum 100 points allowed.\n";
-                return false;
-            }
-
-            char comma;
-
-            if (!(file >> x[n])) {
-                cout << "Invalid x value.\n";
-                return false;
-            }
-
-            file.get(comma);
-
-            if (comma != ',' || !(file >> y[n])) {
-                cout << "Each row must contain two numbers: x,y\n";
-                return false;
-            }
-
-            while (file.peek() == ' ' || file.peek() == '\t')
-                file.get();
-
-            if (file.peek() != '\n' &&
-                file.peek() != '\r' &&
-                !file.eof()) {
-                cout << "Unexpected data after y.\n";
-                return false;
-            }
-
-            n++;
-        }
-
-        if (n == 0) {
-            cout << "The dataset is empty.\n";
-            return false;
-        }
-
-        return true;
     }
 
     bool fit(int numberOfClusters) {
@@ -153,27 +95,29 @@ public:
             }
         }
     }
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 1, 0))
+            return 1;
+    
+        int k;
+    
+        cout << "Enter the number of clusters: ";
+    
+        if (!(cin >> k)) {
+            cout << "Please enter an integer.\n";
+            return 1;
+        }
+    
+        if (!fit(k))
+            return 1;
+    
+        display();
+    
+        return 0;
+    }
 };
 
-int runKMeans() {
-    KMeans model;
-
-    if (!model.loadData("datasets/kmeans.csv"))
-        return 1;
-
-    int k;
-
-    cout << "Enter the number of clusters: ";
-
-    if (!(cin >> k)) {
-        cout << "Please enter an integer.\n";
-        return 1;
-    }
-
-    if (!model.fit(k))
-        return 1;
-
-    model.display();
-
-    return 0;
+MLAlgorithm& getKMeans() {
+    static KMeans model;
+    return model;
 }

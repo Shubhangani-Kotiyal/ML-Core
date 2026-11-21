@@ -12,9 +12,13 @@ DATASETS = Path(__file__).resolve().parent.parent / "datasets"
 
 
 def load_data(filename, columns):
-    data = np.loadtxt(DATASETS / filename, delimiter=",", ndmin=2)
+    requested = input(f"CSV path (or - for {filename}): ").strip()
+    path = DATASETS / filename if requested == "-" else Path(requested).expanduser()
+    data = np.loadtxt(path, delimiter=",", ndmin=2)
     if data.size == 0 or data.shape[1] != columns:
         raise ValueError(f"{filename}: expected nonempty data with {columns} columns.")
+    if len(data) > 100:
+        raise ValueError("Maximum 100 data rows allowed. File rejected.")
     if not np.isfinite(data).all():
         raise ValueError("Use finite numbers only.")
     return data

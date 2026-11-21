@@ -18,7 +18,7 @@ g++ -std=c++11 -Wall -Wextra -pedantic -Iinclude src/*.cpp -o ml_core
 ./ml_core
 ```
 
-Compile all seven source files together. Only src/ml_algorithms_menu.cpp defines main(). Each algorithm's run function creates its class object. include/MathUtils.h provides shared calculations.
+Compile all seven source files together. Only src/ml_algorithms_menu.cpp defines main(). All six classes inherit from MLAlgorithm. The menu calls execute() through base-class pointers, demonstrating runtime polymorphism. include/MLAlgorithm.h owns the common arrays and CSV loader; include/MathUtils.h provides shared calculations.
 
 ## Datasets
 
@@ -91,3 +91,13 @@ python3 python/ml_core_python.py
 This reference uses NumPy and scikit-learn; the C++ implementation remains from scratch. Python resolves datasets relative to the script location. Cluster labels and PCA signs can differ without changing the solution. SVM uses a different solver and regularization setting, so its parameters need not match the C++ model.
 
 See [sample results](results/sample_checks.md) for smoke-test results.
+
+## Inheritance and CSV input update
+
+After choosing an algorithm, enter - to use its sample CSV or enter a custom CSV path. Paths can contain spaces. C++ paths are relative to the current working directory; run from the repository root.
+
+The shared C++ loader reads one physical line at a time and accepts at most 100 nonblank data rows, with no header. Exactly 100 rows are accepted; larger files are rejected rather than truncated. Missing fields, extra columns, nonfinite numbers and invalid labels are rejected. Blank lines are ignored. Regression and PCA require at least two rows; SVM requires both -1 and 1 classes. Other algorithms require at least one row. K-Means still supports at most 10 clusters; its dataset may contain 100 rows. Python also enforces the 100-row maximum.
+
+The inheritance/loader refactor has been source-reviewed but has not yet been compiled or executed in this editing session because the execution environment was unavailable. Earlier sample results refer to the preceding implementation. Run make and recheck all menu options after pulling.
+
+Boundary-check script: run make test to exercise all six C++ algorithms with 99, 100, and 101 rows, malformed rows, and paths containing spaces. This new script is supplied but has not been executed in this session.

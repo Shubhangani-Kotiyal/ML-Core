@@ -48,7 +48,7 @@ Members should use their own Git name and an email linked to their GitHub accoun
 
 ## Code conventions
 
-- Keep one main() in src/ml_algorithms_menu.cpp and preserve the six run function names.
+- Keep one main() in src/ml_algorithms_menu.cpp and preserve the base-class execute interface and object accessor names.
 - Reuse include/MathUtils.h rather than repeating formulas.
 - Keep fixed-size arrays within bounds.
 - Keep CSV filenames consistent with loadData calls.

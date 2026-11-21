@@ -1,14 +1,11 @@
 #include <iostream>
-#include <fstream>
 #include <cmath>
 #include "MathUtils.h"
+#include "MLAlgorithm.h"
 using namespace std;
 
-class SVM {
+class SVM : public MLAlgorithm {
 private:
-    double x[100], y[100];
-    int labels[100];
-    int n;
 
     double weights[2];
     double bias;
@@ -18,7 +15,6 @@ private:
 
 public:
     SVM() {
-        n = 0;
         weights[0] = 0;
         weights[1] = 0;
         bias = 0;
@@ -26,86 +22,6 @@ public:
         learningRate = 0.001;
         lambda = 0.01;
         epochs = 2000;
-    }
-
-    bool loadData(const char filename[]) {
-        ifstream file(filename);
-
-        if (!file) {
-            cout << "Unable to open the CSV file.\n";
-            return false;
-        }
-
-        n = 0;
-        int positive = 0, negative = 0;
-
-        while (true) {
-            file >> ws;
-
-            if (file.eof())
-                break;
-
-            if (n == 100) {
-                cout << "Maximum 100 rows allowed.\n";
-                return false;
-            }
-
-            double row[3];
-
-            for (int j = 0; j < 3; j++) {
-                // Skip spaces without skipping a missing value's newline.
-                while (file.peek() == ' ' || file.peek() == '\t')
-                    file.get();
-
-                if (file.peek() == '\n' || file.peek() == '\r' ||
-                    !(file >> row[j]) || !isfinite(row[j])) {
-                    cout << "Invalid CSV: use x,y,label with no header.\n";
-                    return false;
-                }
-
-                while (file.peek() == ' ' || file.peek() == '\t')
-                    file.get();
-
-                if (j < 2) {
-                    char comma;
-                    file.get(comma);
-
-                    if (!file || comma != ',') {
-                        cout << "Expected a comma between values.\n";
-                        return false;
-                    }
-                }
-            }
-
-            if (!file.eof() &&
-                file.peek() != '\n' && file.peek() != '\r') {
-                cout << "Unexpected characters after the label.\n";
-                return false;
-            }
-
-            if (row[2] != -1 && row[2] != 1) {
-                cout << "Labels must be -1 or 1.\n";
-                return false;
-            }
-
-            x[n] = row[0];
-            y[n] = row[1];
-            labels[n] = (int)row[2];
-
-            if (labels[n] == 1)
-                positive++;
-            else
-                negative++;
-
-            n++;
-        }
-
-        if (positive == 0 || negative == 0) {
-            cout << "The dataset must contain both classes.\n";
-            return false;
-        }
-
-        return true;
     }
 
     void fit() {
@@ -158,29 +74,31 @@ public:
         cout << "\nCorrect training predictions: ";
         cout << correct << " out of " << n << "\n";
     }
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 1, 1))
+            return 1;
+    
+        fit();
+        display();
+    
+        double newX, newY;
+    
+        cout << "\nEnter two features of the new point: ";
+    
+        if (!(cin >> newX >> newY) ||
+            !isfinite(newX) || !isfinite(newY)) {
+            cout << "Please enter two finite numbers.\n";
+            return 1;
+        }
+    
+        cout << "Predicted class: ";
+        cout << predict(newX, newY) << "\n";
+    
+        return 0;
+    }
 };
 
-int runSVM() {
-    SVM model;
-
-    if (!model.loadData("datasets/svm.csv"))
-        return 1;
-
-    model.fit();
-    model.display();
-
-    double newX, newY;
-
-    cout << "\nEnter two features of the new point: ";
-
-    if (!(cin >> newX >> newY) ||
-        !isfinite(newX) || !isfinite(newY)) {
-        cout << "Please enter two finite numbers.\n";
-        return 1;
-    }
-
-    cout << "Predicted class: ";
-    cout << model.predict(newX, newY) << "\n";
-
-    return 0;
+MLAlgorithm& getSVM() {
+    static SVM model;
+    return model;
 }

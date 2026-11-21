@@ -1,13 +1,11 @@
 #include <iostream>
-#include <fstream>
 #include <cmath>
 #include "MathUtils.h"
+#include "MLAlgorithm.h"
 using namespace std;
 
-class HierarchicalClustering {
+class HierarchicalClustering : public MLAlgorithm {
 private:
-    double x[100], y[100];
-    int n;
 
     // Each row stores the point indices belonging to a cluster.
     int members[100][100];
@@ -17,86 +15,12 @@ private:
 
 public:
     HierarchicalClustering() {
-        n = 0;
         clusterCount = 0;
 
         for (int i = 0; i < 100; i++) {
             count[i] = 0;
             active[i] = false;
         }
-    }
-
-    bool loadData(const char filename[]) {
-        ifstream file(filename);
-
-        if (!file) {
-            cout << "Unable to open the CSV file.\n";
-            return false;
-        }
-
-        n = 0;
-
-        while (true) {
-            file >> ws;
-
-            if (file.eof())
-                break;
-
-            if (n == 100) {
-                cout << "Maximum 100 points allowed.\n";
-                return false;
-            }
-
-            double row[2];
-
-            for (int j = 0; j < 2; j++) {
-                while (file.peek() == ' ' ||
-                       file.peek() == '\t') {
-                    file.get();
-                }
-
-                if (file.peek() == '\n' ||
-                    file.peek() == '\r' ||
-                    !(file >> row[j]) ||
-                    !isfinite(row[j])) {
-                    cout << "Invalid CSV: use two numbers per row.\n";
-                    return false;
-                }
-
-                while (file.peek() == ' ' ||
-                       file.peek() == '\t') {
-                    file.get();
-                }
-
-                if (j == 0) {
-                    char comma;
-                    file.get(comma);
-
-                    if (!file || comma != ',') {
-                        cout << "Expected a comma between values.\n";
-                        return false;
-                    }
-                }
-            }
-
-            if (!file.eof() &&
-                file.peek() != '\n' &&
-                file.peek() != '\r') {
-                cout << "Unexpected characters after the second value.\n";
-                return false;
-            }
-
-            x[n] = row[0];
-            y[n] = row[1];
-            n++;
-        }
-
-        if (n == 0) {
-            cout << "The dataset is empty.\n";
-            return false;
-        }
-
-        return true;
     }
 
     bool fit(int targetClusters) {
@@ -181,27 +105,29 @@ public:
             displayNumber++;
         }
     }
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 1, 0))
+            return 1;
+    
+        int target;
+    
+        cout << "Enter the desired number of clusters: ";
+    
+        if (!(cin >> target)) {
+            cout << "Please enter an integer.\n";
+            return 1;
+        }
+    
+        if (!fit(target))
+            return 1;
+    
+        display();
+    
+        return 0;
+    }
 };
 
-int runHierarchicalClustering() {
-    HierarchicalClustering model;
-
-    if (!model.loadData("datasets/hierarchical_clustering.csv"))
-        return 1;
-
-    int target;
-
-    cout << "Enter the desired number of clusters: ";
-
-    if (!(cin >> target)) {
-        cout << "Please enter an integer.\n";
-        return 1;
-    }
-
-    if (!model.fit(target))
-        return 1;
-
-    model.display();
-
-    return 0;
+MLAlgorithm& getHierarchicalClustering() {
+    static HierarchicalClustering model;
+    return model;
 }
