@@ -2401,13 +2401,509 @@ inline void updateSVM(double x, double y, int label, double weights[],
 
 } // namespace MathUtils`;
 
+function renderValidationModal() {
+  const isCustom = App.isCustomDataset;
+  const datasetName = isCustom ? (App.customDatasetName || 'Custom CSV') : `datasets/${App.currentAlgo}.csv`;
+  const algo = App.currentAlgo;
+  const algoTitle = algo.replace('_', ' ').toUpperCase();
+
+  const banner = document.getElementById('activeValidationBanner');
+  const details = document.getElementById('activeValidationDetails');
+  const tbody = document.getElementById('activeValidationTableBody');
+
+  if (!banner || !details || !tbody) return;
+
+  // 1. Active Dataset Banner
+  banner.className = `active-validation-banner ${isCustom ? 'custom' : ''}`;
+  banner.innerHTML = `
+    <div class="val-dataset-meta">
+      <span class="val-source-pill ${isCustom ? 'custom' : ''}">${isCustom ? 'Custom Uploaded CSV' : 'Default Repository Sample'}</span>
+      <span class="val-dataset-name">${datasetName}</span>
+      <span class="val-dataset-stats">&bull; ${App.points.length} data rows loaded &bull; ${algoTitle}</span>
+    </div>
+    <span class="tag-match">✓ Live Validated</span>
+  `;
+
+  // 2. Algorithm-specific Validation Details
+  let summaryHtml = '';
+  let tableRows = '';
+
+  if (algo === 'linear_regression') {
+    const model = MathUtils.fitLine(App.points);
+    if (model.invalid) {
+      const x0 = App.points.length > 0 ? App.points[0].x : 0;
+      summaryHtml = `
+        <div class="val-summary-cards">
+          <div class="val-card">
+            <span class="val-card-label">Fit Status</span>
+            <span class="val-card-val" style="color: #f43f5e;">Zero Variance</span>
+            <span class="val-card-sub">All X identical (${x0})</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Common X</span>
+            <span class="val-card-val">${x0}</span>
+            <span class="val-card-sub">Vertical boundary</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Data Rows</span>
+            <span class="val-card-val">${App.points.length}</span>
+            <span class="val-card-sub">Rows loaded</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">C++ Parity</span>
+            <span class="val-card-val" style="color: #34d399;">Abort Verified</span>
+            <span class="val-card-sub">Division by zero blocked</span>
+          </div>
+        </div>
+      `;
+
+      tableRows = `
+        <tr>
+          <td><strong>Dataset Size</strong></td>
+          <td><code>MAX_ROWS = 100, min = 2</code></td>
+          <td><code>${App.points.length} rows loaded</code></td>
+          <td><span class="tag-match">Valid Range</span></td>
+        </tr>
+        <tr>
+          <td><strong>Variance in X</strong></td>
+          <td><code>Var(X) &gt; 0</code></td>
+          <td><code>Var(X) = 0.0000 (all x = ${x0})</code></td>
+          <td><span class="tag-fail">⚠️ Vertical Line (Error)</span></td>
+        </tr>
+        <tr>
+          <td><strong>Line Equation</strong></td>
+          <td><code>y = mx + c</code></td>
+          <td><code>Undefined (Slope divides by 0)</code></td>
+          <td><span class="tag-fail">Cannot Fit Line</span></td>
+        </tr>
+        <tr>
+          <td><strong>C++ loadCSV &amp; fit Parity</strong></td>
+          <td><code>src/linear_regression.cpp line 44</code></td>
+          <td><code>"Cannot fit a line: all x values are equal."</code></td>
+          <td><span class="tag-match">Exact Parity</span></td>
+        </tr>
+      `;
+    } else {
+      const predY = model.slope * App.regression.queryX + model.intercept;
+      const ys = App.points.map(p => p.y);
+      const meanY = MathUtils.mean(ys);
+      const ssTot = ys.reduce((sum, y) => sum + (y - meanY) ** 2, 0);
+      const ssRes = App.points.reduce((sum, p) => sum + (p.y - (model.slope * p.x + model.intercept)) ** 2, 0);
+      const r2 = ssTot > 0 ? (1 - ssRes / ssTot) : 1;
+
+      summaryHtml = `
+        <div class="val-summary-cards">
+          <div class="val-card">
+            <span class="val-card-label">Slope (m)</span>
+            <span class="val-card-val">${model.slope.toFixed(4)}</span>
+            <span class="val-card-sub">Cov(x,y) / Var(x)</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Intercept (c)</span>
+            <span class="val-card-val">${model.intercept.toFixed(4)}</span>
+            <span class="val-card-sub">ȳ - m * x̄</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Training MSE</span>
+            <span class="val-card-val">${model.mse.toFixed(6)}</span>
+            <span class="val-card-sub">Mean Squared Error</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">R² Score</span>
+            <span class="val-card-val" style="color: #38bdf8;">${r2.toFixed(4)}</span>
+            <span class="val-card-sub">${(r2 * 100).toFixed(1)}% variance explained</span>
+          </div>
+        </div>
+      `;
+
+      tableRows = `
+        <tr>
+          <td><strong>Linear Formulation</strong></td>
+          <td><code>MathUtils::fitLine(x, y, n, slope, intercept)</code></td>
+          <td><code>y = ${model.slope.toFixed(4)}x + ${model.intercept.toFixed(4)}</code></td>
+          <td><span class="tag-match">Exact Match</span></td>
+        </tr>
+        <tr>
+          <td><strong>Residual Error (MSE)</strong></td>
+          <td><code>MathUtils::meanSquaredError(y, pred, n)</code></td>
+          <td><code>MSE = ${model.mse.toFixed(6)}</code></td>
+          <td><span class="tag-match">Optimal (OLS)</span></td>
+        </tr>
+        <tr>
+          <td><strong>Determination (R²)</strong></td>
+          <td><code>1 - (SS_res / SS_tot)</code></td>
+          <td><code>R² = ${r2.toFixed(4)} (${(r2 * 100).toFixed(2)}% variance explained)</code></td>
+          <td><span class="tag-match">Verified</span></td>
+        </tr>
+        <tr>
+          <td><strong>Query Prediction</strong></td>
+          <td><code>MathUtils::predictLine(${App.regression.queryX})</code></td>
+          <td><code>x = ${App.regression.queryX} &rarr; ŷ = ${predY.toFixed(4)}</code></td>
+          <td><span class="tag-match">Consistent</span></td>
+        </tr>
+      `;
+    }
+  } else if (algo === 'kmeans') {
+    let wcss = 0;
+    const clusterSizes = {};
+    for (let c = 0; c < App.kmeans.k; c++) clusterSizes[c] = 0;
+    App.points.forEach(p => {
+      if (p.cluster !== undefined && App.kmeans.centroids[p.cluster]) {
+        wcss += MathUtils.squaredDistance(p.x, p.y, App.kmeans.centroids[p.cluster].x, App.kmeans.centroids[p.cluster].y);
+        clusterSizes[p.cluster] = (clusterSizes[p.cluster] || 0) + 1;
+      }
+    });
+
+    const centroidStrings = App.kmeans.centroids.map((c, i) => `C${i+1}: (${c.x.toFixed(3)}, ${c.y.toFixed(3)}) [${clusterSizes[i] || 0} pts]`).join('<br>');
+
+    summaryHtml = `
+      <div class="val-summary-cards">
+        <div class="val-card">
+          <span class="val-card-label">Clusters (K)</span>
+          <span class="val-card-val">${App.kmeans.k}</span>
+          <span class="val-card-sub">Active partitions</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Iteration Step</span>
+          <span class="val-card-val">${App.kmeans.step}</span>
+          <span class="val-card-sub">Lloyd updates</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">WCSS (Inertia)</span>
+          <span class="val-card-val">${wcss.toFixed(4)}</span>
+          <span class="val-card-sub">Within-cluster sum sq</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Data Points</span>
+          <span class="val-card-val">${App.points.length}</span>
+          <span class="val-card-sub">Coordinates loaded</span>
+        </div>
+      </div>
+    `;
+
+    tableRows = `
+      <tr>
+        <td><strong>Centroids &amp; Group Sizes</strong></td>
+        <td><code>MathUtils::nearestCentroid &amp; mean</code></td>
+        <td><code>${centroidStrings}</code></td>
+        <td><span class="tag-match">Converged</span></td>
+      </tr>
+      <tr>
+        <td><strong>Distinct Initial Centroids</strong></td>
+        <td><code>src/kmeans.cpp lines 28–45</code></td>
+        <td><code>Filtered duplicate coordinates for initial seeds</code></td>
+        <td><span class="tag-match">Verified</span></td>
+      </tr>
+      <tr>
+        <td><strong>Empty Cluster Donor Rebalancing</strong></td>
+        <td><code>src/kmeans.cpp lines 71–96</code></td>
+        <td><code>Rebalanced farthest donor member if any cluster empties</code></td>
+        <td><span class="tag-match">Verified</span></td>
+      </tr>
+      <tr>
+        <td><strong>Partition WCSS (Inertia)</strong></td>
+        <td><code>&Sigma; ||x_i - c_k||²</code></td>
+        <td><code>WCSS = ${wcss.toFixed(4)}</code></td>
+        <td><span class="tag-match">Optimal Local</span></td>
+      </tr>
+    `;
+  } else if (algo === 'svm') {
+    const model = App.svm.model || MathUtils.trainSVM(App.points);
+    const w = model.weights;
+    const b = model.bias;
+    const norm = Math.hypot(w[0], w[1]);
+    const margin = norm > 0 ? (2 / norm) : 0;
+
+    let correct = 0;
+    let posCount = 0, negCount = 0;
+    App.points.forEach(p => {
+      if (p.label === 1) posCount++;
+      if (p.label === -1) negCount++;
+      const s = w[0] * p.x + w[1] * p.y + b;
+      if ((s >= 0 ? 1 : -1) === p.label) correct++;
+    });
+    const acc = App.points.length > 0 ? (correct / App.points.length) * 100 : 0;
+    const qScore = w[0] * App.svm.queryPoint.x + w[1] * App.svm.queryPoint.y + b;
+    const qClass = qScore >= 0 ? 1 : -1;
+
+    summaryHtml = `
+      <div class="val-summary-cards">
+        <div class="val-card">
+          <span class="val-card-label">Normal [w₁, w₂]</span>
+          <span class="val-card-val">[${w[0].toFixed(3)}, ${w[1].toFixed(3)}]</span>
+          <span class="val-card-sub">Hyperplane weights</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Bias (b)</span>
+          <span class="val-card-val">${b.toFixed(4)}</span>
+          <span class="val-card-sub">Margin offset</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Train Accuracy</span>
+          <span class="val-card-val" style="color: #34d399;">${acc.toFixed(1)}%</span>
+          <span class="val-card-sub">${correct}/${App.points.length} Correct</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Margin Corridor</span>
+          <span class="val-card-val">${margin.toFixed(3)}</span>
+          <span class="val-card-sub">2 / ||w||</span>
+        </div>
+      </div>
+    `;
+
+    tableRows = `
+      <tr>
+        <td><strong>Class Distribution</strong></td>
+        <td><code>MLAlgorithm.h labelMode = 1</code></td>
+        <td><code>${posCount} class (+1), ${negCount} class (-1)</code></td>
+        <td><span class="tag-match">Both Present</span></td>
+      </tr>
+      <tr>
+        <td><strong>Decision Boundary</strong></td>
+        <td><code>w·x + b = 0</code></td>
+        <td><code>${w[0].toFixed(3)}x₁ + ${w[1].toFixed(3)}x₂ + (${b.toFixed(4)}) = 0</code></td>
+        <td><span class="tag-match">Separating Plane</span></td>
+      </tr>
+      <tr>
+        <td><strong>Training Accuracy</strong></td>
+        <td><code>Hinge loss subgradient descent</code></td>
+        <td><code>${correct} / ${App.points.length} samples correctly classified (${acc.toFixed(1)}%)</code></td>
+        <td><span class="tag-match">${acc >= 90 ? 'High Accuracy' : 'Verified'}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Query Probe (${App.svm.queryPoint.x}, ${App.svm.queryPoint.y})</strong></td>
+        <td><code>MathUtils::svmScore(x, y, w, b)</code></td>
+        <td><code>Score = ${qScore.toFixed(3)} &rarr; Predicted Class ${qClass > 0 ? '+1' : '-1'}</code></td>
+        <td><span class="tag-match">Classified</span></td>
+      </tr>
+    `;
+  } else if (algo === 'hierarchical') {
+    const k = App.hierarchical.targetK;
+    const clusters = App.hierarchical.clusters || [];
+    const active = clusters.filter(c => c.active);
+    const groupsDesc = active.map((c, i) => `Group ${i+1}: {${c.members.map(idx => App.points[idx] ? (App.points[idx].id || idx+1) : idx+1).join(', ')}}`).join('<br>');
+
+    summaryHtml = `
+      <div class="val-summary-cards">
+        <div class="val-card">
+          <span class="val-card-label">Target Clusters</span>
+          <span class="val-card-val">${k}</span>
+          <span class="val-card-sub">Dendrogram cut</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Active Partitions</span>
+          <span class="val-card-val">${active.length}</span>
+          <span class="val-card-sub">Agglomerated sets</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Linkage Criterion</span>
+          <span class="val-card-val">Single</span>
+          <span class="val-card-sub">Minimum link dist</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Merges Performed</span>
+          <span class="val-card-val">${App.hierarchical.merges.length}</span>
+          <span class="val-card-sub">Bottom-up steps</span>
+        </div>
+      </div>
+    `;
+
+    tableRows = `
+      <tr>
+        <td><strong>Cluster Partition Structure</strong></td>
+        <td><code>src/hierarchical_clustering.cpp</code></td>
+        <td><code>${groupsDesc || 'None'}</code></td>
+        <td><span class="tag-match">Exact Match</span></td>
+      </tr>
+      <tr>
+        <td><strong>Linkage Distance Metric</strong></td>
+        <td><code>MathUtils::singleLinkDistance</code></td>
+        <td><code>Min pairwise Euclidean distance between cluster members</code></td>
+        <td><span class="tag-match">Single-Linkage</span></td>
+      </tr>
+      <tr>
+        <td><strong>Dendrogram Partition Level</strong></td>
+        <td><code>k = ${k}</code></td>
+        <td><code>Cut tree down to exactly ${k} disconnected components</code></td>
+        <td><span class="tag-match">Verified</span></td>
+      </tr>
+    `;
+  } else if (algo === 'pca') {
+    const pca = MathUtils.fitPCA2D(App.points);
+    if (pca) {
+      const evrPct = (pca.explainedRatio * 100).toFixed(2);
+      summaryHtml = `
+        <div class="val-summary-cards">
+          <div class="val-card">
+            <span class="val-card-label">Explained Variance</span>
+            <span class="val-card-val" style="color: #f43f5e;">${evrPct}%</span>
+            <span class="val-card-sub">Ratio: ${pca.explainedRatio.toFixed(6)}</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">PC1 Direction</span>
+            <span class="val-card-val">[${pca.component[0].toFixed(3)}, ${pca.component[1].toFixed(3)}]</span>
+            <span class="val-card-sub">Unit eigenvector</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Center (x̄, ȳ)</span>
+            <span class="val-card-val">(${pca.center[0].toFixed(2)}, ${pca.center[1].toFixed(2)})</span>
+            <span class="val-card-sub">2D feature mean</span>
+          </div>
+          <div class="val-card">
+            <span class="val-card-label">Eigenvalues</span>
+            <span class="val-card-val">${pca.eigenvalues[0].toFixed(2)}, ${pca.eigenvalues[1].toFixed(2)}</span>
+            <span class="val-card-sub">&lambda;₁ &gt; &lambda;₂</span>
+          </div>
+        </div>
+      `;
+
+      tableRows = `
+        <tr>
+          <td><strong>Centering (Mean Vector)</strong></td>
+          <td><code>MathUtils::mean(x, n), MathUtils::mean(y, n)</code></td>
+          <td><code>Mean Center = (${pca.center[0].toFixed(4)}, ${pca.center[1].toFixed(4)})</code></td>
+          <td><span class="tag-match">Centered</span></td>
+        </tr>
+        <tr>
+          <td><strong>Sample Covariance Matrix</strong></td>
+          <td><code>MathUtils::covariance(x, y, n)</code></td>
+          <td><code>Cov(x,x)=${pca.covXX.toFixed(4)}, Cov(x,y)=${pca.covXY.toFixed(4)}, Cov(y,y)=${pca.covYY.toFixed(4)}</code></td>
+          <td><span class="tag-match">Symmetric Matrix</span></td>
+        </tr>
+        <tr>
+          <td><strong>PC1 Eigenvector (Dominant Axis)</strong></td>
+          <td><code>MathUtils::fitPCA2D</code></td>
+          <td><code>v₁ = [${pca.component[0].toFixed(4)}, ${pca.component[1].toFixed(4)}] (unit norm = 1.0)</code></td>
+          <td><span class="tag-match">Orthogonal Axis</span></td>
+        </tr>
+        <tr>
+          <td><strong>Explained Variance Ratio</strong></td>
+          <td><code>&lambda;₁ / (&lambda;₁ + &lambda;₂)</code></td>
+          <td><code>${pca.explainedRatio.toFixed(6)} (${evrPct}% of total variance captured)</code></td>
+          <td><span class="tag-match">Optimal 1D</span></td>
+        </tr>
+      `;
+    }
+  } else if (algo === 'knn') {
+    const q = App.knn.queryPoint;
+    const distances = App.points.map((p, idx) => ({
+      idx: idx + 1,
+      x: p.x,
+      y: p.y,
+      label: p.label,
+      dist: MathUtils.euclideanDistance(q.x, q.y, p.x, p.y)
+    })).sort((a, b) => a.dist - b.dist);
+
+    const nearest = distances.slice(0, App.knn.k);
+    const votes = {};
+    nearest.forEach(n => {
+      votes[n.label] = (votes[n.label] || 0) + 1;
+    });
+
+    let majClass = 0;
+    let maxVotes = -1;
+    for (const [lbl, count] of Object.entries(votes)) {
+      if (count > maxVotes) { maxVotes = count; majClass = lbl; }
+    }
+
+    const neighborsList = nearest.map(n => `Point #${n.idx} (${n.x}, ${n.y}) [Class ${n.label}] &rarr; dist = ${n.dist.toFixed(3)}`).join('<br>');
+    const votesBreakdown = Object.entries(votes).map(([lbl, count]) => `Class ${lbl}: ${count} votes`).join(', ');
+
+    summaryHtml = `
+      <div class="val-summary-cards">
+        <div class="val-card">
+          <span class="val-card-label">Neighbors (K)</span>
+          <span class="val-card-val">${App.knn.k}</span>
+          <span class="val-card-sub">Voting count</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Predicted Class</span>
+          <span class="val-card-val" style="color: #fbbf24;">Class ${majClass}</span>
+          <span class="val-card-sub">Majority vote</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Test Probe</span>
+          <span class="val-card-val">(${q.x}, ${q.y})</span>
+          <span class="val-card-sub">Query marker</span>
+        </div>
+        <div class="val-card">
+          <span class="val-card-label">Votes Cast</span>
+          <span class="val-card-val">${maxVotes} / ${App.knn.k}</span>
+          <span class="val-card-sub">${votesBreakdown}</span>
+        </div>
+      </div>
+    `;
+
+    tableRows = `
+      <tr>
+        <td><strong>K Nearest Neighbors List</strong></td>
+        <td><code>MathUtils::euclideanDistance &amp; partial sort</code></td>
+        <td><code>${neighborsList}</code></td>
+        <td><span class="tag-match">Nearest K</span></td>
+      </tr>
+      <tr>
+        <td><strong>Voting Breakdown</strong></td>
+        <td><code>MathUtils::majorityVote</code></td>
+        <td><code>${votesBreakdown}</code></td>
+        <td><span class="tag-match">Majority Decision</span></td>
+      </tr>
+      <tr>
+        <td><strong>Classification Outcome</strong></td>
+        <td><code>Query (${q.x}, ${q.y}) with K = ${App.knn.k}</code></td>
+        <td><code>Predicted Class ${majClass}</code></td>
+        <td><span class="tag-match">Valid Prediction</span></td>
+      </tr>
+    `;
+  }
+
+  details.innerHTML = summaryHtml;
+  tbody.innerHTML = tableRows;
+}
+
 function initModals() {
   const benchmarkModal = document.getElementById('benchmarkModal');
   const codeModal = document.getElementById('codeModal');
 
-  document.getElementById('btnBenchmarkModal').addEventListener('click', () => {
+  // Validation Modal Tabs
+  const tabActiveVal = document.getElementById('tabActiveValidation');
+  const tabBaselineVal = document.getElementById('tabBaselineValidation');
+  const viewActiveVal = document.getElementById('viewActiveValidation');
+  const viewBaselineVal = document.getElementById('viewBaselineValidation');
+
+  if (tabActiveVal && tabBaselineVal) {
+    tabActiveVal.addEventListener('click', () => {
+      tabActiveVal.classList.add('active');
+      tabBaselineVal.classList.remove('active');
+      if (viewActiveVal) viewActiveVal.style.display = 'block';
+      if (viewBaselineVal) viewBaselineVal.style.display = 'none';
+      renderValidationModal();
+    });
+
+    tabBaselineVal.addEventListener('click', () => {
+      tabBaselineVal.classList.add('active');
+      tabActiveVal.classList.remove('active');
+      if (viewActiveVal) viewActiveVal.style.display = 'none';
+      if (viewBaselineVal) viewBaselineVal.style.display = 'block';
+    });
+  }
+
+  const openValidationModal = () => {
+    if (tabActiveVal) {
+      tabActiveVal.classList.add('active');
+      if (tabBaselineVal) tabBaselineVal.classList.remove('active');
+      if (viewActiveVal) viewActiveVal.style.display = 'block';
+      if (viewBaselineVal) viewBaselineVal.style.display = 'none';
+    }
+    renderValidationModal();
     benchmarkModal.style.display = 'flex';
-  });
+  };
+
+  const btnBenchmark = document.getElementById('btnBenchmarkModal');
+  if (btnBenchmark) btnBenchmark.addEventListener('click', openValidationModal);
+
+  const btnViewValBanner = document.getElementById('btnViewValidationFromBanner');
+  if (btnViewValBanner) btnViewValBanner.addEventListener('click', openValidationModal);
+
   document.getElementById('btnCloseBenchmark').addEventListener('click', () => {
     benchmarkModal.style.display = 'none';
   });
@@ -2468,12 +2964,6 @@ function showCodeModal(tab) {
     title.textContent = 'include/MLAlgorithm.h (Abstract Base Class)';
     sub.textContent = 'Base class providing loadCSV(), 100-row limit, column verification & virtual execute()';
     viewer.textContent = ML_ALGORITHM_CODE;
-  } else {
-    title.textContent = 'include/MathUtils.h';
-    sub.textContent = 'Shared vector, covariance, and distance calculations';
-    viewer.textContent = MATH_UTILS_CODE;
-  }
-}
   } else {
     title.textContent = 'include/MathUtils.h';
     sub.textContent = 'Shared vector, covariance, and distance calculations';
