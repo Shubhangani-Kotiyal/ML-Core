@@ -17,3 +17,5 @@ clean:
 
 test: ml_core
 	python3 tests/check_csv_limits.py
+	python3 tests/check_kmeans.py
+

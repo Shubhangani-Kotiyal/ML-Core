@@ -25,10 +25,23 @@ public:
 
         k = numberOfClusters;
 
-        // Choose the first K points as initial centroids.
-        for (int i = 0; i < k; i++) {
-            centerX[i] = x[i];
-            centerY[i] = y[i];
+        // Repeated rows must not create identical initial centroids.
+        int selected = 0;
+        for (int i = 0; i < n && selected < k; i++) {
+            bool duplicate = false;
+            for (int c = 0; c < selected; c++) {
+                if (x[i] == centerX[c] && y[i] == centerY[c])
+                    duplicate = true;
+            }
+            if (!duplicate) {
+                centerX[selected] = x[i];
+                centerY[selected] = y[i];
+                selected++;
+            }
+        }
+        if (selected < k) {
+            cout << "K cannot exceed the number of distinct points.\n";
+            return false;
         }
 
         for (int i = 0; i < n; i++) {
@@ -51,7 +64,37 @@ public:
                 }
             }
 
-            // Stop when the assignments no longer change.
+            int counts[10] = {0};
+            for (int i = 0; i < n; i++)
+                counts[cluster[i]]++;
+
+            // Fill an empty cluster without emptying its donor cluster.
+            for (int c = 0; c < k; c++) {
+                if (counts[c] != 0)
+                    continue;
+                int candidate = -1;
+                double farthest = -1;
+                for (int i = 0; i < n; i++) {
+                    int donor = cluster[i];
+                    if (counts[donor] <= 1)
+                        continue;
+                    double distance = MathUtils::squaredDistance(
+                        x[i], y[i], centerX[donor], centerY[donor]);
+                    if (distance > farthest) {
+                        farthest = distance;
+                        candidate = i;
+                    }
+                }
+                if (candidate == -1) {
+                    cout << "Unable to fill an empty cluster.\n";
+                    return false;
+                }
+                counts[cluster[candidate]]--;
+                cluster[candidate] = c;
+                counts[c]++;
+                changed = true;
+            }
+
             if (!changed)
                 return true;
 
@@ -68,15 +111,12 @@ public:
                     }
                 }
 
-                // Keep the previous centroid if a cluster is empty.
-                if (count > 0) {
-                    centerX[c] = MathUtils::mean(groupX, count);
-                    centerY[c] = MathUtils::mean(groupY, count);
-                }
+                centerX[c] = MathUtils::mean(groupX, count);
+                centerY[c] = MathUtils::mean(groupY, count);
             }
         }
 
-        cout << "Stopped after 100 iterations.\n";
+        cout << "Warning: reached 100 iterations; convergence is not guaranteed.\n";
         return true;
     }
 
@@ -121,3 +161,4 @@ MLAlgorithm& getKMeans() {
     static KMeans model;
     return model;
 }
+

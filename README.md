@@ -98,6 +98,13 @@ After choosing an algorithm, enter - to use its sample CSV or enter a custom CSV
 
 The shared C++ loader reads one physical line at a time and accepts at most 100 nonblank data rows, with no header. Exactly 100 rows are accepted; larger files are rejected rather than truncated. Missing fields, extra columns, nonfinite numbers and invalid labels are rejected. Blank lines are ignored. Regression and PCA require at least two rows; SVM requires both -1 and 1 classes. Other algorithms require at least one row. K-Means still supports at most 10 clusters; its dataset may contain 100 rows. Python also enforces the 100-row maximum.
 
-The inheritance/loader refactor has been source-reviewed but has not yet been compiled or executed in this editing session because the execution environment was unavailable. Earlier sample results refer to the preceding implementation. Run make and recheck all menu options after pulling.
+The inheritance/loader refactor was compiled with C++11, -Wall, -Wextra and -pedantic without warnings on 21 November 2026. All six menu options were run successfully with the included datasets. These checks confirm the demonstration cases, not correctness for every possible dataset.
 
-Boundary-check script: run make test to exercise all six C++ algorithms with 99, 100, and 101 rows, malformed rows, and paths containing spaces. This new script is supplied but has not been executed in this session.
+Boundary-check script: run make test to exercise all six C++ algorithms with 99, 100, and 101 rows, malformed rows, and paths containing spaces. The script was executed successfully for all six algorithms on 21 November 2026.
+
+
+## K-Means duplicate points and empty clusters
+
+K-Means selects the first K distinct points as initial centroids and rejects K greater than the number of distinct points. If a cluster becomes empty during training, a point farthest from its assigned centroid is moved from a cluster containing more than one point. Centroids are then recalculated using the shared mean function. Reaching the 100-iteration limit prints a convergence warning. Results still depend on initialization.
+
+`make test` also runs `tests/check_kmeans.py`, covering duplicate rows, excessive K for distinct points, a cluster becoming empty during training, and the original sample centroids. These checks passed on 21 November 2026.
