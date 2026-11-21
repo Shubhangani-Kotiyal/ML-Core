@@ -2,6 +2,8 @@
 
 An interactive, modern web frontend that visually demonstrates the 6 fundamental machine learning algorithms implemented from scratch in C++ for the **ML-Core** Project-Based Learning project at **Graphic Era Deemed to be University**.
 
+> **Architecture & Implementation Clarification**: The web visualizer is a standalone client-side browser application. It executes independent JavaScript algorithms designed to mirror the numerical calculations and validation constraints of the C++ codebase (enforcing 100-row limits, distinct K-Means centroid selection, empty-cluster donor rebalancing, and zero-variance linear regression error handling). It runs completely client-side in the browser and does not call C++ binaries or WebAssembly.
+
 ---
 
 ## 👥 Team T170

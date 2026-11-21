@@ -107,11 +107,13 @@ const MathUtils = {
   // Fit line using covariance / variance (Least Squares)
   fitLine(points) {
     const n = points.length;
-    if (n < 2) return { slope: 0, intercept: 0, mse: 0 };
+    if (n < 2) return { invalid: true, error: "At least two data rows are required.", slope: NaN, intercept: NaN, mse: NaN };
     const xs = points.map(p => p.x);
     const ys = points.map(p => p.y);
     const varX = this.variance(xs);
-    if (varX === 0) return { slope: 0, intercept: 0, mse: 0 };
+    if (varX === 0) {
+      return { invalid: true, error: "Cannot fit a line: all x values are equal.", slope: NaN, intercept: NaN, mse: NaN, x0: xs[0] };
+    }
     const cov = this.covariance(xs, ys);
     const slope = cov / varX;
     const intercept = this.mean(ys) - slope * this.mean(xs);
@@ -123,7 +125,7 @@ const MathUtils = {
     }
     const mse = sse / n;
 
-    return { slope, intercept, mse };
+    return { slope, intercept, mse, invalid: false };
   },
 
   // Train Linear SVM (Hinge loss + L2 regularization)
@@ -479,6 +481,60 @@ function drawLinearRegression(ctx) {
   const model = MathUtils.fitLine(App.points);
   const { minX, maxX } = App.bounds;
 
+  if (model.invalid) {
+    // 1. Draw Data Points in Red
+    for (const p of App.points) {
+      const { px, py } = Canvas.dataToCanvas(p.x, p.y);
+      ctx.save();
+      ctx.fillStyle = '#f43f5e';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Draw vertical dashed alert line through the common X value
+    const x0 = App.points.length > 0 ? App.points[0].x : 0;
+    const pTop = Canvas.dataToCanvas(x0, App.bounds.maxY);
+    const pBottom = Canvas.dataToCanvas(x0, App.bounds.minY);
+
+    ctx.save();
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(244, 63, 94, 0.6)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(pTop.px, pTop.py);
+    ctx.lineTo(pBottom.px, pBottom.py);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Draw Centered Error Banner
+    ctx.save();
+    const cx = Canvas.width / 2;
+    const cy = Canvas.height / 2;
+    const bw = 390, bh = 60;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
+    ctx.strokeRect(cx - bw / 2, cy - bh / 2, bw, bh);
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.font = 'bold 12px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠️ Cannot fit a line: all X values are equal.', cx, cy - 8);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillText(`Variance in X = 0 (vertical line at x = ${x0}). Add points with different X.`, cx, cy + 14);
+    ctx.restore();
+    return;
+  }
+
   // 1. Draw Residual Error Segments (MSE lines)
   for (const p of App.points) {
     const predY = model.slope * p.x + model.intercept;
@@ -575,11 +631,24 @@ function initKMeans() {
   const k = App.kmeans.k;
   App.kmeans.step = 0;
   App.kmeans.history = [];
-
-  // Pick first K points as initial centroids (matching C++ code)
   App.kmeans.centroids = [];
+
+  // Repeated rows must not create identical initial centroids (matching C++ src/kmeans.cpp lines 28-45)
+  const distinctPoints = [];
+  for (const p of App.points) {
+    if (!distinctPoints.some(d => d.x === p.x && d.y === p.y)) {
+      distinctPoints.push({ x: p.x, y: p.y });
+    }
+  }
+
+  if (distinctPoints.length < k && App.points.length > 0) {
+    showToast(`Warning: K (${k}) exceeds distinct points (${distinctPoints.length})!`);
+  }
+
   for (let i = 0; i < k; i++) {
-    if (i < App.points.length) {
+    if (i < distinctPoints.length) {
+      App.kmeans.centroids.push({ x: distinctPoints[i].x, y: distinctPoints[i].y });
+    } else if (i < App.points.length) {
       App.kmeans.centroids.push({ x: App.points[i].x, y: App.points[i].y });
     } else {
       App.kmeans.centroids.push({ x: 2 + i, y: 2 + i });
@@ -617,8 +686,8 @@ function stepKMeansNext() {
       if (pts.length > 0) {
         const newX = MathUtils.mean(pts.map(p => p.x));
         const newY = MathUtils.mean(pts.map(p => p.y));
-        if (Math.abs(App.kmeans.centroids[c].x - newX) > 0.001 ||
-            Math.abs(App.kmeans.centroids[c].y - newY) > 0.001) {
+        if (Math.abs(App.kmeans.centroids[c].x - newX) > 0.0001 ||
+            Math.abs(App.kmeans.centroids[c].y - newY) > 0.0001) {
           changed = true;
         }
         App.kmeans.centroids[c] = { x: newX, y: newY };
@@ -633,8 +702,44 @@ function stepKMeansNext() {
   } else {
     // Assignment step
     assignKMeansClusters();
+
+    // Rebalance empty clusters (matching C++ src/kmeans.cpp lines 71-96)
+    const counts = new Array(k).fill(0);
+    App.points.forEach(p => {
+      if (p.cluster !== undefined && p.cluster < k) counts[p.cluster]++;
+    });
+
+    let filledEmpty = false;
+    for (let c = 0; c < k; c++) {
+      if (counts[c] !== 0) continue;
+      let candidate = -1;
+      let farthest = -1;
+      for (let i = 0; i < App.points.length; i++) {
+        const donor = App.points[i].cluster;
+        if (counts[donor] <= 1) continue;
+        const d = MathUtils.squaredDistance(
+          App.points[i].x, App.points[i].y,
+          App.kmeans.centroids[donor].x, App.kmeans.centroids[donor].y
+        );
+        if (d > farthest) {
+          farthest = d;
+          candidate = i;
+        }
+      }
+      if (candidate !== -1) {
+        counts[App.points[candidate].cluster]--;
+        App.points[candidate].cluster = c;
+        counts[c]++;
+        filledEmpty = true;
+      }
+    }
+
     App.kmeans.step++;
-    updatePlaybackStatus(`Step ${App.kmeans.step}: Points assigned to nearest centroids`);
+    if (filledEmpty) {
+      updatePlaybackStatus(`Step ${App.kmeans.step}: Points assigned & empty cluster filled from farthest donor point`);
+    } else {
+      updatePlaybackStatus(`Step ${App.kmeans.step}: Points assigned to nearest centroids`);
+    }
   }
 
   recalculateAndRender();
@@ -1359,29 +1464,55 @@ function updateMetricsGrid() {
 
   if (algo === 'linear_regression') {
     const model = MathUtils.fitLine(App.points);
-    const predY = model.slope * App.regression.queryX + model.intercept;
-    html = `
-      <div class="metric-item">
-        <span class="metric-label">Slope (m)</span>
-        <span class="metric-value">${model.slope.toFixed(4)}</span>
-        <span class="metric-sub">Rate of change</span>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">Intercept (c)</span>
-        <span class="metric-value">${model.intercept.toFixed(4)}</span>
-        <span class="metric-sub">Y at X = 0</span>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">Training MSE</span>
-        <span class="metric-value">${model.mse.toFixed(6)}</span>
-        <span class="metric-sub">Mean Squared Error</span>
-      </div>
-      <div class="metric-item">
-        <span class="metric-label">Predicted ŷ</span>
-        <span class="metric-value" style="color: #fbbf24;">${predY.toFixed(4)}</span>
-        <span class="metric-sub">For x = ${App.regression.queryX}</span>
-      </div>
-    `;
+    if (model.invalid) {
+      const x0 = App.points.length > 0 ? App.points[0].x : 0;
+      html = `
+        <div class="metric-item">
+          <span class="metric-label">Slope (m)</span>
+          <span class="metric-value metric-error">Undefined (Vertical)</span>
+          <span class="metric-sub">Zero variance in X</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Intercept (c)</span>
+          <span class="metric-value metric-error">None</span>
+          <span class="metric-sub">Vertical line at x=${x0}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Training MSE</span>
+          <span class="metric-value metric-error">Undefined</span>
+          <span class="metric-sub">Fit failed (var(x)=0)</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Fit Status</span>
+          <span class="metric-value metric-error">Error</span>
+          <span class="metric-sub">All X identical (${App.points.length} pts)</span>
+        </div>
+      `;
+    } else {
+      const predY = model.slope * App.regression.queryX + model.intercept;
+      html = `
+        <div class="metric-item">
+          <span class="metric-label">Slope (m)</span>
+          <span class="metric-value">${model.slope.toFixed(4)}</span>
+          <span class="metric-sub">Rate of change</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Intercept (c)</span>
+          <span class="metric-value">${model.intercept.toFixed(4)}</span>
+          <span class="metric-sub">Y at X = 0</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Training MSE</span>
+          <span class="metric-value">${model.mse.toFixed(6)}</span>
+          <span class="metric-sub">Mean Squared Error</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Predicted ŷ</span>
+          <span class="metric-value" style="color: #fbbf24;">${predY.toFixed(4)}</span>
+          <span class="metric-sub">For x = ${App.regression.queryX}</span>
+        </div>
+      `;
+    }
   } else if (algo === 'kmeans') {
     let wcss = 0;
     App.points.forEach(p => {
@@ -1804,13 +1935,16 @@ function toggleAutoPlay() {
 // ============================================================================
 const C_CODE_SNIPPETS = {
   linear_regression: `// From src/linear_regression.cpp
-class LinearRegression {
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class LinearRegression : public MLAlgorithm {
 private:
-    double x[100], y[100];
-    int n;
     double slope, intercept;
 
 public:
+    LinearRegression() : slope(0), intercept(0) {}
+
     bool fit() {
         return MathUtils::fitLine(x, y, n, slope, intercept);
     }
@@ -1826,25 +1960,64 @@ public:
         }
         return MathUtils::meanSquaredError(y, predicted, n);
     }
-};`,
-  kmeans: `// From src/kmeans.cpp
-class KMeans {
-private:
-    double x[100], y[100];
-    double centerX[10], centerY[10];
-    int cluster[100];
-    int n, k;
 
-public:
-    bool fit(int numberOfClusters) {
-        k = numberOfClusters;
-        // First K points initialize centroids
-        for (int i = 0; i < k; i++) {
-            centerX[i] = x[i];
-            centerY[i] = y[i];
+    void display() const {
+        std::cout << "\\nSlope: " << slope;
+        std::cout << "\\nIntercept: " << intercept;
+        std::cout << "\\nTraining MSE: " << calculateMSE() << "\\n";
+    }
+
+    int execute(const char filename[]) override {
+        // Enforce 100-row limit & 2 numeric columns via MLAlgorithm base class
+        if (!loadCSV(filename, 2, 0)) return 1;
+
+        if (!fit()) {
+            std::cout << "Cannot fit a line: all x values are equal.\\n";
+            return 1;
         }
 
-        // Iterative refinement loop
+        display();
+        return 0;
+    }
+};`,
+
+  kmeans: `// From src/kmeans.cpp
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class KMeans : public MLAlgorithm {
+private:
+    double centerX[10], centerY[10];
+    int cluster[100];
+    int k;
+
+public:
+    KMeans() : k(0) {}
+
+    bool fit(int numberOfClusters) {
+        if (numberOfClusters < 1 || numberOfClusters > 10 || numberOfClusters > n)
+            return false;
+        k = numberOfClusters;
+
+        // Distinct-centroid initialization: repeated rows must not create identical initial centroids
+        int selected = 0;
+        for (int i = 0; i < n && selected < k; i++) {
+            bool duplicate = false;
+            for (int c = 0; c < selected; c++) {
+                if (x[i] == centerX[c] && y[i] == centerY[c]) duplicate = true;
+            }
+            if (!duplicate) {
+                centerX[selected] = x[i];
+                centerY[selected] = y[i];
+                selected++;
+            }
+        }
+        if (selected < k) {
+            std::cout << "K cannot exceed the number of distinct points.\\n";
+            return false;
+        }
+
+        // Assignment and centroid update loop
         for (int iteration = 0; iteration < 100; iteration++) {
             bool changed = false;
             // 1. Assign each point to its nearest centroid
@@ -1852,23 +2025,70 @@ public:
                 int nearest = MathUtils::nearestCentroid(x[i], y[i], centerX, centerY, k);
                 if (cluster[i] != nearest) { cluster[i] = nearest; changed = true; }
             }
-            if (!changed && iteration > 0) break;
-            // 2. Recompute center as mean of cluster members
-            // ...
+
+            int counts[10] = {0};
+            for (int i = 0; i < n; i++) counts[cluster[i]]++;
+
+            // 2. Donor rebalancing: fill empty cluster without emptying its donor
+            for (int c = 0; c < k; c++) {
+                if (counts[c] != 0) continue;
+                int candidate = -1;
+                double farthest = -1;
+                for (int i = 0; i < n; i++) {
+                    int donor = cluster[i];
+                    if (counts[donor] <= 1) continue;
+                    double distance = MathUtils::squaredDistance(x[i], y[i], centerX[donor], centerY[donor]);
+                    if (distance > farthest) { farthest = distance; candidate = i; }
+                }
+                if (candidate == -1) return false;
+                counts[cluster[candidate]]--;
+                cluster[candidate] = c;
+                counts[c]++;
+                changed = true;
+            }
+
+            if (!changed) return true;
+
+            // 3. Recalculate centroids as cluster means
+            for (int c = 0; c < k; c++) {
+                double clusterX[100], clusterY[100];
+                int clusterSize = 0;
+                for (int i = 0; i < n; i++) {
+                    if (cluster[i] == c) {
+                        clusterX[clusterSize] = x[i];
+                        clusterY[clusterSize] = y[i];
+                        clusterSize++;
+                    }
+                }
+                centerX[c] = MathUtils::mean(clusterX, clusterSize);
+                centerY[c] = MathUtils::mean(clusterY, clusterSize);
+            }
         }
         return true;
     }
+
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 1, 0)) return 1;
+        // Prompt K, fit(k), and display cluster groups...
+        return 0;
+    }
 };`,
+
   svm: `// From src/svm.cpp
-class SVM {
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class SVM : public MLAlgorithm {
 private:
-    double x[100], y[100];
-    int labels[100];
     double weights[2], bias;
     double learningRate, lambda;
     int epochs;
 
 public:
+    SVM() : bias(0), learningRate(0.001), lambda(0.01), epochs(2000) {
+        weights[0] = 0; weights[1] = 0;
+    }
+
     void fit() {
         weights[0] = 0; weights[1] = 0; bias = 0;
         for (int epoch = 0; epoch < epochs; epoch++) {
@@ -1883,9 +2103,21 @@ public:
         double score = MathUtils::svmScore(newX, newY, weights, bias);
         return score >= 0 ? 1 : -1;
     }
+
+    int execute(const char filename[]) override {
+        // Enforces labelMode 1: exactly 3 columns (x, y, label in {-1, 1}) and both classes present
+        if (!loadCSV(filename, 2, 1)) return 1;
+        fit();
+        // classify test coordinates and calculate training accuracy...
+        return 0;
+    }
 };`,
+
   hierarchical: `// From src/hierarchical_clustering.cpp
-class HierarchicalClustering {
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class HierarchicalClustering : public MLAlgorithm {
 private:
     int members[100][100];
     int count[100];
@@ -1893,30 +2125,65 @@ private:
     int clusterCount;
 
 public:
+    HierarchicalClustering() : clusterCount(0) {
+        for (int i = 0; i < 100; i++) { count[i] = 0; active[i] = false; }
+    }
+
     bool fit(int targetClusters) {
-        // Each point starts as its own cluster
+        if (targetClusters < 1 || targetClusters > n) return false;
         for (int i = 0; i < n; i++) {
             members[i][0] = i; count[i] = 1; active[i] = true;
         }
         clusterCount = n;
 
-        // Repeatedly merge closest clusters (Single Linkage)
+        // Agglomerative single-linkage merges
         while (clusterCount > targetClusters) {
             int bestA = -1, bestB = -1;
             double minDistance = 0;
-            // MathUtils::singleLinkDistance(...)
+            bool foundFirst = false;
+
+            for (int i = 0; i < n; i++) {
+                if (!active[i]) continue;
+                for (int j = i + 1; j < n; j++) {
+                    if (!active[j]) continue;
+                    double d = MathUtils::singleLinkDistance(x, y, members[i], count[i], members[j], count[j]);
+                    if (!foundFirst || d < minDistance) {
+                        minDistance = d; bestA = i; bestB = j; foundFirst = true;
+                    }
+                }
+            }
+            if (bestA == -1) return false;
             // Merge cluster B into cluster A
+            for (int i = 0; i < count[bestB]; i++) {
+                members[bestA][count[bestA]++] = members[bestB][i];
+            }
+            active[bestB] = false;
             clusterCount--;
         }
         return true;
     }
+
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 2, 0)) return 1;
+        // Prompt targetClusters, fit, and display groups...
+        return 0;
+    }
 };`,
+
   pca: `// From src/pca.cpp
-class PCA {
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class PCA : public MLAlgorithm {
 private:
     double center[2], component[2], explainedRatio;
 
 public:
+    PCA() : explainedRatio(0) {
+        center[0] = 0; center[1] = 0;
+        component[0] = 0; component[1] = 0;
+    }
+
     bool fit() {
         return MathUtils::fitPCA2D(x, y, n, center, component, explainedRatio);
     }
@@ -1924,10 +2191,23 @@ public:
     double project(double newX, double newY) const {
         return MathUtils::projectPoint2D(newX, newY, center, component);
     }
+
+    int execute(const char filename[]) override {
+        if (!loadCSV(filename, 2, 0)) return 1;
+        if (!fit()) return 1;
+        // Output PC1 axis, center, and explained variance ratio...
+        return 0;
+    }
 };`,
+
   knn: `// From src/knn.cpp
-class KNN {
+#include "MathUtils.h"
+#include "MLAlgorithm.h"
+
+class KNN : public MLAlgorithm {
 public:
+    KNN() {}
+
     int predict(double newX, double newY, int k) const {
         double distance[100];
         int index[100];
@@ -1935,11 +2215,141 @@ public:
             distance[i] = MathUtils::euclideanDistance(newX, newY, x[i], y[i]);
             index[i] = i;
         }
-        // Partial selection sort for K smallest distances
-        // Count votes and return majority class
+        // Partial selection sort for K nearest neighbors
+        for (int i = 0; i < k; i++) {
+            int minIdx = i;
+            for (int j = i + 1; j < n; j++) {
+                if (distance[j] < distance[minIdx]) minIdx = j;
+            }
+            std::swap(distance[i], distance[minIdx]);
+            std::swap(index[i], index[minIdx]);
+        }
+        // Count votes among the K nearest neighbors and return majority class
+        return MathUtils::majorityVote(labels, index, k);
+    }
+
+    int execute(const char filename[]) override {
+        // Enforces labelMode 2: 3 columns with non-negative integer labels
+        if (!loadCSV(filename, 1, 2)) return 1;
+        // Prompt test coordinates & K, predict, and report votes...
+        return 0;
     }
 };`
 };
+
+const ML_ALGORITHM_CODE = `// From include/MLAlgorithm.h (Abstract Base Class)
+#ifndef ML_ALGORITHM_H
+#define ML_ALGORITHM_H
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cmath>
+#include <climits>
+
+class MLAlgorithm {
+protected:
+    enum { MAX_ROWS = 100 };
+    double x[MAX_ROWS], y[MAX_ROWS];
+    int labels[MAX_ROWS];
+    int n;
+
+    // labelMode: 0 = two numeric columns, 1 = SVM, 2 = KNN.
+    bool loadCSV(const char filename[], int minimumRows, int labelMode = 0) {
+        n = 0;
+        std::ifstream file(filename);
+        if (!file) {
+            std::cout << "Unable to open CSV: " << filename << "\\n";
+            return false;
+        }
+        std::string line;
+        int lineNumber = 0, count = 0;
+        while (std::getline(file, line)) {
+            ++lineNumber;
+            if (line.find_first_not_of(" \\t\\r") == std::string::npos)
+                continue;
+            if (count == MAX_ROWS) {
+                std::cout << "Maximum 100 data rows allowed. File rejected.\\n";
+                return false;
+            }
+            std::stringstream row(line);
+            double values[3] = {0, 0, 0};
+            int columns = labelMode == 0 ? 2 : 3;
+            for (int j = 0; j < columns; ++j) {
+                if (!(row >> values[j]) || !std::isfinite(values[j])) {
+                    std::cout << "Invalid or missing number on CSV line "
+                              << lineNumber << ".\\n";
+                    return false;
+                }
+                if (j < columns - 1) {
+                    char comma;
+                    if (!(row >> comma) || comma != ',') {
+                        std::cout << "Expected comma on CSV line "
+                                  << lineNumber << ".\\n";
+                        return false;
+                    }
+                }
+            }
+            row >> std::ws;
+            if (!row.eof()) {
+                std::cout << "Extra data on CSV line " << lineNumber << ".\\n";
+                return false;
+            }
+            if (labelMode != 0) {
+                double label = values[2];
+                if (std::floor(label) != label || label < INT_MIN || label > INT_MAX) {
+                    std::cout << "Class labels must be integers in the int range.\\n";
+                    return false;
+                }
+                if (labelMode == 1 && label != -1 && label != 1) {
+                    std::cout << "SVM labels must be -1 or 1.\\n";
+                    return false;
+                }
+                labels[count] = static_cast<int>(label);
+            }
+            x[count] = values[0];
+            y[count] = values[1];
+            ++count;
+        }
+        if (file.bad()) {
+            std::cout << "Error reading CSV file.\\n";
+            return false;
+        }
+        if (count < minimumRows) {
+            std::cout << "At least " << minimumRows << " data rows required.\\n";
+            return false;
+        }
+        if (labelMode == 1) {
+            bool positive = false, negative = false;
+            for (int i = 0; i < count; ++i) {
+                if (labels[i] == 1) positive = true;
+                if (labels[i] == -1) negative = true;
+            }
+            if (!positive || !negative) {
+                std::cout << "SVM data must contain both classes.\\n";
+                return false;
+            }
+        }
+        n = count;
+        return true;
+    }
+
+public:
+    MLAlgorithm() : n(0) {}
+    virtual ~MLAlgorithm() {}
+    virtual int execute(const char filename[]) = 0;
+};
+
+// Factory functions implemented in each algorithm's source file
+MLAlgorithm& getLinearRegression();
+MLAlgorithm& getKMeans();
+MLAlgorithm& getSVM();
+MLAlgorithm& getHierarchicalClustering();
+MLAlgorithm& getPCA();
+MLAlgorithm& getKNN();
+
+#endif`;
 
 const MATH_UTILS_CODE = `// From include/MathUtils.h
 namespace MathUtils {
@@ -1969,6 +2379,7 @@ inline double covariance(const double x[], const double y[], int n) {
 
 inline bool fitLine(const double x[], const double y[], int n,
                     double &slope, double &intercept) {
+    if (n < 2) return false;
     double varX = variance(x, n);
     if (varX == 0) return false;
     slope = covariance(x, y, n) / varX;
@@ -2009,17 +2420,33 @@ function initModals() {
     codeModal.style.display = 'none';
   });
 
-  document.getElementById('tabAlgoCode').addEventListener('click', (e) => {
-    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-    e.target.classList.add('active');
-    showCodeModal('algo');
-  });
+  const tabAlgo = document.getElementById('tabAlgoCode');
+  const tabBase = document.getElementById('tabBaseCode');
+  const tabMath = document.getElementById('tabMathCode');
 
-  document.getElementById('tabMathCode').addEventListener('click', (e) => {
-    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-    e.target.classList.add('active');
-    showCodeModal('math');
-  });
+  if (tabAlgo) {
+    tabAlgo.addEventListener('click', (e) => {
+      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      showCodeModal('algo');
+    });
+  }
+
+  if (tabBase) {
+    tabBase.addEventListener('click', (e) => {
+      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      showCodeModal('base');
+    });
+  }
+
+  if (tabMath) {
+    tabMath.addEventListener('click', (e) => {
+      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      showCodeModal('math');
+    });
+  }
 
   // Close modals on clicking backdrop
   window.addEventListener('click', (e) => {
@@ -2035,8 +2462,18 @@ function showCodeModal(tab) {
 
   if (tab === 'algo') {
     title.textContent = `C++ Class: ${App.currentAlgo.replace('_', ' ').toUpperCase()}`;
-    sub.textContent = `From src/${App.currentAlgo}.cpp`;
+    sub.textContent = `From src/${App.currentAlgo}.cpp (inherits from MLAlgorithm)`;
     viewer.textContent = C_CODE_SNIPPETS[App.currentAlgo] || '// C++ snippet';
+  } else if (tab === 'base') {
+    title.textContent = 'include/MLAlgorithm.h (Abstract Base Class)';
+    sub.textContent = 'Base class providing loadCSV(), 100-row limit, column verification & virtual execute()';
+    viewer.textContent = ML_ALGORITHM_CODE;
+  } else {
+    title.textContent = 'include/MathUtils.h';
+    sub.textContent = 'Shared vector, covariance, and distance calculations';
+    viewer.textContent = MATH_UTILS_CODE;
+  }
+}
   } else {
     title.textContent = 'include/MathUtils.h';
     sub.textContent = 'Shared vector, covariance, and distance calculations';
@@ -2116,75 +2553,161 @@ let uploadedData = {
 };
 
 function parseCSVText(text, targetAlgo) {
-  if (!text || typeof text !== 'string') return [];
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'));
-  if (lines.length === 0) return [];
-
-  const points = [];
-  let startIndex = 0;
-
-  // Check if first line is a header
-  const firstTokens = lines[0].split(/[,\t ]+/).filter(t => t.length > 0);
-  if (firstTokens.length > 0 && isNaN(Number(firstTokens[0]))) {
-    startIndex = 1;
+  if (!text || typeof text !== 'string') {
+    return { points: [], error: 'CSV file or input is empty.' };
   }
 
-  for (let i = startIndex; i < lines.length; i++) {
-    const tokens = lines[i].split(/[,\t ]+/).filter(t => t.length > 0).map(Number);
-    if (tokens.length >= 2 && !isNaN(tokens[0]) && !isNaN(tokens[1])) {
-      const x = tokens[0];
-      const y = tokens[1];
+  const rawLines = text.split(/\r?\n/);
+  const dataLines = [];
 
-      if (targetAlgo === 'svm') {
-        let label = 1;
-        if (tokens.length >= 3) {
-          label = tokens[2] >= 0 ? 1 : -1;
-        } else {
-          // If no label provided, alternate or split
-          label = (points.length % 2 === 0) ? 1 : -1;
-        }
-        points.push({ x, y, label });
-      } else if (targetAlgo === 'knn') {
-        let label = 0;
-        if (tokens.length >= 3) {
-          label = Math.max(0, Math.floor(tokens[2]));
-        } else {
-          label = (points.length % 2 === 0) ? 0 : 1;
-        }
-        points.push({ x, y, label });
-      } else if (targetAlgo === 'hierarchical') {
-        points.push({ x, y, id: points.length + 1 });
-      } else {
-        points.push({ x, y });
+  for (let idx = 0; idx < rawLines.length; idx++) {
+    const raw = rawLines[idx];
+    // Skip empty lines (matching C++ line.find_first_not_of(" \\t\\r") == npos)
+    if (raw.find ? false : /^\s*$/.test(raw)) continue;
+    // Skip comment lines
+    if (raw.trim().startsWith('#') || raw.trim().startsWith('//')) continue;
+    dataLines.push({ lineNumber: idx + 1, text: raw.trim() });
+  }
+
+  if (dataLines.length === 0) {
+    return { points: [], error: 'At least 1 data row required.' };
+  }
+
+  // Enforce 100-row maximum limit (matching C++ MAX_ROWS = 100 in include/MLAlgorithm.h)
+  if (dataLines.length > 100) {
+    return { points: [], error: 'Maximum 100 data rows allowed. File rejected.' };
+  }
+
+  // labelMode: 0 = two numeric columns, 1 = SVM, 2 = KNN.
+  const isSVM = targetAlgo === 'svm';
+  const isKNN = targetAlgo === 'knn';
+  const labelMode = isSVM ? 1 : (isKNN ? 2 : 0);
+  const columns = labelMode === 0 ? 2 : 3;
+
+  // Minimum row requirements (matching C++ loadCSV(filename, minRows, labelMode))
+  let minimumRows = 1;
+  if (targetAlgo === 'linear_regression' || targetAlgo === 'svm' || targetAlgo === 'hierarchical' || targetAlgo === 'pca') {
+    minimumRows = 2;
+  }
+  if (dataLines.length < minimumRows) {
+    return { points: [], error: `At least ${minimumRows} data rows required.` };
+  }
+
+  const points = [];
+
+  for (let i = 0; i < dataLines.length; i++) {
+    const { lineNumber, text: line } = dataLines[i];
+
+    // Must be comma-separated
+    if (!line.includes(',')) {
+      return { points: [], error: `Expected comma on CSV line ${lineNumber}.` };
+    }
+
+    const tokens = line.split(',');
+    if (tokens.length < columns) {
+      return { points: [], error: `Invalid or missing number on CSV line ${lineNumber}.` };
+    }
+    if (tokens.length > columns) {
+      return { points: [], error: `Extra data on CSV line ${lineNumber}.` };
+    }
+
+    const values = [];
+    for (let j = 0; j < columns; j++) {
+      const trimmed = tokens[j].trim();
+      if (trimmed === '') {
+        return { points: [], error: `Invalid or missing number on CSV line ${lineNumber}.` };
       }
+      const num = Number(trimmed);
+      if (!Number.isFinite(num)) {
+        return { points: [], error: `Invalid or missing number on CSV line ${lineNumber}.` };
+      }
+      values.push(num);
+    }
+
+    if (labelMode !== 0) {
+      const label = values[2];
+      if (!Number.isInteger(label) || label < -2147483648 || label > 2147483647) {
+        return { points: [], error: `Class labels must be integers in the int range (line ${lineNumber}).` };
+      }
+      if (labelMode === 1 && label !== -1 && label !== 1) {
+        return { points: [], error: `SVM labels must be -1 or 1 (line ${lineNumber}).` };
+      }
+      if (labelMode === 2 && label < 0) {
+        return { points: [], error: `KNN labels must be non-negative integers (line ${lineNumber}).` };
+      }
+    }
+
+    if (targetAlgo === 'svm') {
+      points.push({ x: values[0], y: values[1], label: values[2] });
+    } else if (targetAlgo === 'knn') {
+      points.push({ x: values[0], y: values[1], label: values[2] });
+    } else if (targetAlgo === 'hierarchical') {
+      points.push({ x: values[0], y: values[1], id: points.length + 1 });
+    } else {
+      points.push({ x: values[0], y: values[1] });
     }
   }
 
-  return points;
+  // Validate that SVM dataset contains both classes
+  if (labelMode === 1) {
+    let positive = false, negative = false;
+    for (const p of points) {
+      if (p.label === 1) positive = true;
+      if (p.label === -1) negative = true;
+    }
+    if (!positive || !negative) {
+      return { points: [], error: 'SVM data must contain both classes.' };
+    }
+  }
+
+  return { points, error: null };
 }
 
 function updateUploadPreview() {
-  const points = parseCSVText(uploadedData.rawText, uploadedData.targetAlgo);
-  uploadedData.parsedPoints = points;
-
   const previewContainer = document.getElementById('dataPreviewContainer');
   const previewTitle = document.getElementById('previewTitle');
   const badge = document.getElementById('previewValidationBadge');
+  const errorBox = document.getElementById('previewErrorBox');
+  const tableWrap = document.getElementById('previewTableWrap');
   const table = document.getElementById('previewTable');
   const thead = table.querySelector('thead');
   const tbody = table.querySelector('tbody');
   const btnApply = document.getElementById('btnApplyDataset');
 
-  if (points.length === 0) {
+  if (!uploadedData.rawText || uploadedData.rawText.trim() === '') {
     previewContainer.style.display = 'none';
+    if (errorBox) errorBox.style.display = 'none';
     btnApply.disabled = true;
     return;
   }
 
   previewContainer.style.display = 'block';
+
+  const res = parseCSVText(uploadedData.rawText, uploadedData.targetAlgo);
+
+  if (res.error) {
+    uploadedData.parsedPoints = [];
+    previewTitle.textContent = 'CSV Validation Failed';
+    badge.textContent = 'Invalid CSV Data';
+    badge.classList.add('invalid');
+    if (errorBox) {
+      errorBox.innerHTML = `⚠️ <strong>Validation Error:</strong> ${res.error}`;
+      errorBox.style.display = 'flex';
+    }
+    if (tableWrap) tableWrap.style.display = 'none';
+    btnApply.disabled = true;
+    return;
+  }
+
+  // Valid parsed points
+  const points = res.points;
+  uploadedData.parsedPoints = points;
+
   previewTitle.textContent = `Parsed Data: ${points.length} rows ready`;
-  badge.textContent = `Valid for ${uploadedData.targetAlgo.replace('_', ' ').toUpperCase()}`;
+  badge.textContent = `Valid for ${uploadedData.targetAlgo.replace('_', ' ').toUpperCase()} (≤100 rows)`;
   badge.classList.remove('invalid');
+  if (errorBox) errorBox.style.display = 'none';
+  if (tableWrap) tableWrap.style.display = 'block';
   btnApply.disabled = false;
 
   // Render Table Preview
@@ -2372,10 +2895,14 @@ function initUploadModal() {
 
   // Apply Dataset Button
   btnApply.addEventListener('click', () => {
-    if (uploadedData.parsedPoints.length === 0) return;
+    const res = parseCSVText(uploadedData.rawText, uploadedData.targetAlgo);
+    if (res.error || !res.points || res.points.length === 0) {
+      showToast(`Cannot apply dataset: ${res.error || 'Invalid CSV data'}`);
+      return;
+    }
 
-    // Replace original dataset
-    App.points = JSON.parse(JSON.stringify(uploadedData.parsedPoints));
+    // Replace original dataset with validated points
+    App.points = JSON.parse(JSON.stringify(res.points));
     App.isCustomDataset = true;
     App.customDatasetName = uploadedData.fileName || 'Custom CSV';
 

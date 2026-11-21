@@ -286,6 +286,7 @@
       <div class="modal-body">
         <div class="code-tabs">
           <button class="code-tab active" id="tabAlgoCode">Algorithm Class</button>
+          <button class="code-tab" id="tabBaseCode">MLAlgorithm.h (Base Class)</button>
           <button class="code-tab" id="tabMathCode">MathUtils.h</button>
         </div>
         <pre class="code-block"><code id="codeViewer">// C++ code will load dynamically</code></pre>
@@ -420,7 +421,8 @@
             <span class="preview-title" id="previewTitle">Parsed Data Preview (0 rows ready)</span>
             <span class="preview-badge" id="previewValidationBadge">Valid for Selected Algorithm</span>
           </div>
-          <div class="preview-table-wrap">
+          <div class="preview-error-box" id="previewErrorBox" style="display: none;"></div>
+          <div class="preview-table-wrap" id="previewTableWrap">
             <table class="preview-table" id="previewTable">
               <thead></thead>
               <tbody></tbody>
