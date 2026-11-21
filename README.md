@@ -48,7 +48,7 @@ The integrated menu has been compiled and exercised with all six included datase
 | PCA | No further input | Explained variance ratio about 0.963181 |
 | KNN | K=3, point 2 2 | Class 0 |
 
-These are small demonstration checks, not comprehensive validation. Training accuracy does not measure performance on unseen data. A small comparison against scikit-learn is recorded in results/sample_checks.md. Broader evaluation and charts remain pending. Invalid keyboard extraction ends the program; restart to try again.
+These are small demonstration checks, not comprehensive validation. Training accuracy does not measure performance on unseen data. A small comparison against scikit-learn is recorded in results/sample_checks.md. Graphical visualization and interactive simulations are provided in the companion web dashboard (`frontend/`), which executes client-side JavaScript implementations written to mirror the C++ algorithms independently. Invalid keyboard extraction ends the program; restart to try again.
 
 ## Team workflow
 
@@ -87,8 +87,10 @@ Each member should commit their own work with their own Git identity.
 The project includes an interactive web dashboard located in `frontend/` that visually demonstrates all six algorithms on an interactive 2D coordinate canvas:
 - **Live Internet URL**: [https://stunning-taffy-3ed8d5.netlify.app](https://stunning-taffy-3ed8d5.netlify.app)
 - **Live Algorithm Simulations**: Real-time regression lines and residual errors, K-Means cluster stepping and auto-play, SVM hyperplanes and margin corridors, hierarchical single-linkage agglomeration, PCA 1D projection animations, and KNN neighborhood radar.
-- **Custom CSV Upload**: Upload or paste any custom CSV dataset, select any of the 6 algorithms, and the data is dynamically parsed, auto-scaled, and run in real time.
-- **Verification Dashboard**: Side-by-side C++ vs scikit-learn validation table and C++ class source code viewer.
+- **Strict CSV Upload**: Upload or paste any custom CSV dataset with full validation mirroring C++ (strict 100-row limit, finite numbers, exact columns per algorithm, and valid label checks).
+- **Verification Dashboard**: Side-by-side C++ vs scikit-learn validation table and full C++ class source code inspector.
+
+> **Implementation Clarification**: The visualizer is a dedicated client-side web application. It runs independent JavaScript implementations that directly mirror the mathematical formulations and validation constraints of the C++ codebase (including 100-row limits, distinct K-Means centroid selection, empty-cluster rebalancing, and zero-variance linear regression error handling). It executes standalone in the browser without requiring a C++ backend or WebAssembly.
 
 To run locally:
 ```bash
