@@ -113,9 +113,15 @@
           <span class="custom-banner-badge">CUSTOM DATASET ACTIVE</span>
           <span class="custom-banner-text" id="customBannerText">Loaded 0 rows &bull; Replaced default repository CSV</span>
         </div>
-        <button class="custom-banner-btn" id="btnRestoreFromBanner" title="Restore default repository CSV">
-          Restore Default Dataset
-        </button>
+        <div class="custom-banner-actions" style="display: flex; gap: 8px;">
+          <button class="custom-banner-btn" id="btnViewValidationFromBanner" title="View live validation metrics for this dataset">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+            <span>Live Validation</span>
+          </button>
+          <button class="custom-banner-btn" id="btnRestoreFromBanner" title="Restore default repository CSV">
+            Restore Default Dataset
+          </button>
+        </div>
       </div>
 
       <!-- Main Interactive 2D Canvas Area -->
@@ -200,75 +206,122 @@
     </aside>
   </main>
 
-  <!-- MODAL: C++ vs Scikit-Learn Validation -->
+  <!-- MODAL: C++ vs Scikit-Learn Validation & Active Dataset Verification -->
   <div class="modal-backdrop" id="benchmarkModal" style="display: none;">
-    <div class="modal-card">
+    <div class="modal-card modal-large">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <h3>C++ From Scratch vs Python Scikit-Learn</h3>
-          <p>Smoke test and validation results recorded in <code>results/sample_checks.md</code></p>
+          <h3 id="validationModalTitle">Algorithm Validation &amp; Verification</h3>
+          <p id="validationModalSub">Live dataset validation and C++ vs Python scikit-learn benchmarks</p>
         </div>
         <button class="modal-close-btn" id="btnCloseBenchmark">&times;</button>
       </div>
       <div class="modal-body">
-        <table class="benchmark-table">
-          <thead>
-            <tr>
-              <th>Algorithm</th>
-              <th>Test Input</th>
-              <th>C++ (From Scratch)</th>
-              <th>Python (scikit-learn 1.8.0)</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Linear Regression</strong></td>
-              <td>Query x = 7.0</td>
-              <td><code>13.2667</code> (MSE: 0.184127)</td>
-              <td><code>13.2666667</code> (MSE: 0.184126984)</td>
-              <td><span class="tag-match">Exact Match</span></td>
-            </tr>
-            <tr>
-              <td><strong>K-Means Clustering</strong></td>
-              <td>K = 2</td>
-              <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
-              <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
-              <td><span class="tag-match">Exact Match</span></td>
-            </tr>
-            <tr>
-              <td><strong>Linear SVM</strong></td>
-              <td>Point (2, 2)</td>
-              <td>Class +1 (8/8 train accuracy)</td>
-              <td>Class +1 (1.0 train accuracy)</td>
-              <td><span class="tag-match">Consistent</span></td>
-            </tr>
-            <tr>
-              <td><strong>Hierarchical Clustering</strong></td>
-              <td>2 Clusters</td>
-              <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
-              <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
-              <td><span class="tag-match">Exact Match</span></td>
-            </tr>
-            <tr>
-              <td><strong>PCA (2D &rarr; 1D)</strong></td>
-              <td>Full covariance</td>
-              <td>Explained Variance Ratio: <code>0.963181</code></td>
-              <td>Explained Variance Ratio: <code>0.963181314</code></td>
-              <td><span class="tag-match">Exact Match</span></td>
-            </tr>
-            <tr>
-              <td><strong>KNN Classifier</strong></td>
-              <td>K = 3, Point (2, 2)</td>
-              <td>Class 0 (3/3 votes)</td>
-              <td>Class 0</td>
-              <td><span class="tag-match">Exact Match</span></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="benchmark-note">
-          <p><strong>Note on Solvers:</strong> Both implementations verify identical convergence and group assignments. Minor numeric variations in SVM arise because C++ utilizes direct stochastic hinge-loss subgradient descent with L2 regularization, while scikit-learn uses LibSVM quadratic programming dual optimization.</p>
+        <!-- Validation Tabs -->
+        <div class="code-tabs" style="margin-bottom: 16px;">
+          <button class="code-tab active" id="tabActiveValidation">Active Dataset Live Validation</button>
+          <button class="code-tab" id="tabBaselineValidation">Baseline Benchmark (scikit-learn Reference)</button>
         </div>
+
+        <!-- VIEW 1: Active Dataset Live Validation -->
+        <div id="viewActiveValidation">
+          <!-- Active Dataset Info Banner -->
+          <div id="activeValidationBanner" class="active-validation-banner">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Live Metrics Summary Cards for Active Dataset -->
+          <div id="activeValidationDetails">
+            <!-- Populated dynamically with live computed metrics -->
+          </div>
+
+          <!-- Active Dataset Live Verification Table -->
+          <div style="margin-top: 14px;">
+            <h4 style="font-size: 13px; color: #e2e8f0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+              <span>Mathematical Verification on Active Dataset</span>
+              <span class="tag-match" style="font-size: 10px;">C++ Formula Parity</span>
+            </h4>
+            <table class="benchmark-table" id="activeValidationTable">
+              <thead>
+                <tr>
+                  <th>Validation Criterion</th>
+                  <th>C++ Formulation</th>
+                  <th>Active Dataset Result</th>
+                  <th>Status &amp; Verification</th>
+                </tr>
+              </thead>
+              <tbody id="activeValidationTableBody">
+                <!-- Populated dynamically based on current algorithm & points -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- VIEW 2: Baseline Benchmark (scikit-learn sample checks) -->
+        <div id="viewBaselineValidation" style="display: none;">
+          <div class="baseline-intro-box">
+            <p><strong>Baseline Reference Datasets:</strong> Smoke test and verification results recorded in <code>results/sample_checks.md</code> comparing C++ from scratch against Python scikit-learn 1.8.0 on canonical repository datasets.</p>
+          </div>
+          <table class="benchmark-table">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Test Input</th>
+                <th>C++ (From Scratch)</th>
+                <th>Python (scikit-learn 1.8.0)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Linear Regression</strong></td>
+                <td>Query x = 7.0</td>
+                <td><code>13.2667</code> (MSE: 0.184127)</td>
+                <td><code>13.2666667</code> (MSE: 0.184126984)</td>
+                <td><span class="tag-match">Exact Match</span></td>
+              </tr>
+              <tr>
+                <td><strong>K-Means Clustering</strong></td>
+                <td>K = 2</td>
+                <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
+                <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
+                <td><span class="tag-match">Exact Match</span></td>
+              </tr>
+              <tr>
+                <td><strong>Linear SVM</strong></td>
+                <td>Point (2, 2)</td>
+                <td>Class +1 (8/8 train accuracy)</td>
+                <td>Class +1 (1.0 train accuracy)</td>
+                <td><span class="tag-match">Consistent</span></td>
+              </tr>
+              <tr>
+                <td><strong>Hierarchical Clustering</strong></td>
+                <td>2 Clusters</td>
+                <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
+                <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
+                <td><span class="tag-match">Exact Match</span></td>
+              </tr>
+              <tr>
+                <td><strong>PCA (2D &rarr; 1D)</strong></td>
+                <td>Full covariance</td>
+                <td>Explained Variance Ratio: <code>0.963181</code></td>
+                <td>Explained Variance Ratio: <code>0.963181314</code></td>
+                <td><span class="tag-match">Exact Match</span></td>
+              </tr>
+              <tr>
+                <td><strong>KNN Classifier</strong></td>
+                <td>K = 3, Point (2, 2)</td>
+                <td>Class 0 (3/3 votes)</td>
+                <td>Class 0</td>
+                <td><span class="tag-match">Exact Match</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="benchmark-note">
+            <p><strong>Note on Solvers:</strong> Both implementations verify identical convergence and group assignments. Minor numeric variations in SVM arise because C++ utilizes direct stochastic hinge-loss subgradient descent with L2 regularization, while scikit-learn uses LibSVM quadratic programming dual optimization.</p>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
