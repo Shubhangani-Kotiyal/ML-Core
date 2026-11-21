@@ -1,0 +1,454 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============================================================
+% PACKAGES
+% ============================================================
+\usepackage[
+    a4paper,
+    top=1.55cm,
+    bottom=1.35cm,
+    left=1.75cm,
+    right=1.75cm
+]{geometry}
+
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{ragged2e}
+
+% ============================================================
+% COLORS
+% ============================================================
+\definecolor{GEUBlue}{RGB}{43,91,145}
+\definecolor{GEUBannerBlue}{RGB}{0,102,148}
+\definecolor{GEUYellow}{RGB}{255,201,38}
+\definecolor{InstructionGrey}{RGB}{125,125,125}
+
+% ============================================================
+% GENERAL SETTINGS
+% ============================================================
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\renewcommand{\arraystretch}{1}
+
+% ============================================================
+% HEADER / FOOTER
+% ============================================================
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{%
+    \fontsize{10.5}{12}\selectfont
+    COURSE NAME AND ID
+}
+
+\fancyhead[R]{%
+    \fontsize{10.5}{12}\selectfont
+    PHASE-III PROJECT PROGRESS
+}
+
+\fancyfoot[R]{%
+    \fontsize{10}{12}\selectfont
+    Page \thepage
+}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\setlength{\headheight}{20pt}
+\setlength{\headsep}{0.65cm}
+\setlength{\footskip}{0.65cm}
+
+% ============================================================
+% BOTTOM YELLOW LINE
+% ============================================================
+\AddToShipoutPictureBG{%
+\begin{tikzpicture}[remember picture,overlay]
+    \fill[GEUYellow]
+    (current page.south west)
+    rectangle
+    ([yshift=0.14cm]current page.south east);
+\end{tikzpicture}
+}
+
+% ============================================================
+% CUSTOM COMMANDS
+% ============================================================
+\newcommand{\sectiontitle}[1]{%
+    \par\noindent{\color{GEUBlue}
+    \fontsize{18}{22}\selectfont #1\par}
+}
+
+\newcommand{\instruction}[1]{%
+    \par\noindent{\color{InstructionGrey}
+    \fontsize{10.5}{13}\selectfont #1\par}
+}
+
+\newcommand{\answerbox}[2]{%
+    \par\noindent
+    \begin{tabularx}{\textwidth}{
+        |>{\raggedright\arraybackslash}X|}
+        \hline
+        \parbox[t][#1][t]{\dimexpr\linewidth-12pt\relax}{
+            \vspace{5pt}
+            \fontsize{11}{13}\selectfont #2
+        }\\
+        \hline
+    \end{tabularx}\par
+}
+
+% ============================================================
+% DOCUMENT
+% ============================================================
+\begin{document}
+
+% Phase-III design with Phase-I front-page arrangement.
+\begingroup
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1}
+\vspace*{0.10cm}
+\begin{center}
+\IfFileExists{geulogo.png}{%
+    \includegraphics[width=8cm,height=2cm,keepaspectratio]{geulogo.png}%
+}{%
+    \fbox{\parbox{7cm}{\centering Upload geulogo.png}}%
+}
+\end{center}
+
+\vspace{0.50cm}
+
+\noindent
+\colorbox{GEUBannerBlue}{%
+\parbox{\dimexpr\textwidth-2\fboxsep\relax}{
+    \vspace{0.17cm}
+    {\color{GEUYellow}
+    \fontsize{16.5}{20}\selectfont
+    \bfseries PROJECT AND TEAM INFORMATION}
+    \vspace{0.17cm}
+}}\par
+
+\vspace{0.50cm}
+\sectiontitle{Project Title}
+\vspace{0.05cm}
+\instruction{(Try to choose a catchy title. Max 20 words).}
+\vspace{0.25cm}
+\answerbox{1.00cm}{\textit{ML-Core: A C++-Based Implementation of Fundamental Machine Learning Algorithms}}
+
+\vspace{0.50cm}
+\sectiontitle{Student / Team Information}
+\vspace{0.25cm}
+{\fontsize{11}{13}\selectfont
+\par\noindent\begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{0.69\textwidth}|>{\RaggedRight\arraybackslash}X|}
+\hline
+\parbox[t][1.10cm][t]{\linewidth}{\vspace{4pt}\itshape Team Name:\\Team \#}
+& \parbox[t][1.10cm][t]{\linewidth}{\vspace{4pt}\itshape ML Core\\T170}\\
+\hline
+\parbox[t][3.20cm][t]{\linewidth}{\vspace{6pt}\textbf{Team member 1 (Team Lead)}\\
+\textit{(Last Name, name: student ID: email, picture):}}
+& \parbox[t][3.20cm][t]{\linewidth}{\vspace{5pt}\itshape
+Kotiyal, Shubhangani --\\2510370294\\2510370294@geu.ac.in\\[5pt]
+\IfFileExists{member1.png}{\includegraphics[width=1.3cm,height=1.45cm,keepaspectratio]{member1.png}}{\fbox{\parbox[c][1.1cm][c]{1.1cm}{\centering\tiny Photo}}}}\\
+\hline
+\parbox[t][3.20cm][t]{\linewidth}{\vspace{6pt}\textbf{Team member 2}\\
+\textit{(Last Name, name: student ID: email, picture):}}
+& \parbox[t][3.20cm][t]{\linewidth}{\vspace{5pt}\itshape
+Agarwal, Ishanaya --\\2510380249\\2510380249@geu.ac.in\\[5pt]
+\IfFileExists{member2.png}{\includegraphics[width=1.3cm,height=1.45cm,keepaspectratio]{member2.png}}{\fbox{\parbox[c][1.1cm][c]{1.1cm}{\centering\tiny Photo}}}}\\
+\hline
+\parbox[t][3.20cm][t]{\linewidth}{\vspace{6pt}\textbf{Team member 3}\\
+\textit{(Last Name, name: student ID: email, picture):}}
+& \parbox[t][3.20cm][t]{\linewidth}{\vspace{5pt}\itshape
+Joshi, Harshita --\\2510380118\\2510380118@geu.ac.in\\[5pt]
+\IfFileExists{member3.png}{\includegraphics[width=1.3cm,height=1.45cm,keepaspectratio]{member3.png}}{\fbox{\parbox[c][1.1cm][c]{1.1cm}{\centering\tiny Photo}}}}\\
+\hline
+\end{tabularx}\par}
+\endgroup
+
+\newpage
+\vspace*{0.15cm}
+
+\noindent
+\colorbox{GEUBannerBlue}{%
+\parbox{\dimexpr\textwidth-2\fboxsep\relax}{
+    \vspace{0.18cm}
+    {\color{GEUYellow}
+    \fontsize{17}{21}\selectfont
+    \bfseries
+    PHASE-III PROJECT PROGRESS DESCRIPTION (35 pts)}
+    \vspace{0.18cm}
+}}
+
+\vspace{0.70cm}
+
+% ABSTRACT
+\sectiontitle{Project Abstract (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Brief restatement of your project's main goal. Max 300 words).
+}
+
+\vspace{0.12cm}
+
+\answerbox{6cm}{The main goal of \textbf{ML-Core} is to implement six machine learning algorithms---Linear Regression, SVM, KNN, K-Means, Hierarchical Clustering, and PCA---from scratch in C++, without pre-built machine learning libraries. The project helps learners understand the mathematical calculations and logical steps behind regression, classification, clustering, and dimensionality reduction.
+
+Each algorithm is implemented in a separate class and accessed through an integrated menu. A shared mathematics module provides reusable functions for means, distances, dot products, covariance, and prediction errors. Numerical datasets are read from CSV files and stored in fixed-size arrays.
+
+The project applies encapsulation, composition, arrays, structures, sorting, binary merge trees, and recursion. It prioritises understandable code and traceable calculations, connecting machine learning theory with practical programming. Its purpose is to help the team build, test, and explain algorithms confidently on small datasets.}
+
+\vspace{0.70cm}
+
+% UPDATED APPROACH
+\sectiontitle{Updated Project Approach and Architecture (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Describe your current approach, including system design,
+communication protocols, libraries used, etc.\\
+Max 300 words).
+}
+
+\vspace{0.25cm}
+
+\answerbox{8cm}{ML-Core follows a modular, object-oriented approach in C++. The MLCore class manages an integrated menu and contains objects of all six algorithm classes. Each algorithm uses Dataset and MathUtils objects for data access and shared calculations.
+
+The Dataset class reads numerical CSV files, checks their structure, and stores up to 100 rows in fixed-size arrays. MathUtils provides means, distances, dot products, covariance, Mean Squared Error, centering, and eigenvalue calculations for symmetric two-by-two matrices.
+
+Linear Regression uses direct least squares. KNN uses Euclidean distance, bubble sorting, and majority voting. K-Means handles one feature and two clusters. SVM performs linear binary classification using hinge-loss-based parameter updates. Hierarchical Clustering uses single-link merging and binary merge trees. PCA centres two-feature data and projects it onto one principal component.
+
+The implementation uses only \texttt{<iostream>}, \texttt{<fstream>}, and \texttt{<cmath>} for console interaction, file input, and mathematical operations. No external machine learning libraries are used.
+
+Components communicate through member-function calls and array parameters. The application runs locally, so network protocols are not required. Results appear in the console. The design demonstrates encapsulation, composition, sorting, array-based storage, and recursive tree traversal.}
+
+\newpage
+
+% ============================================================
+% PAGE 3
+% ============================================================
+
+\vspace*{0.20cm}
+
+% TASKS COMPLETED
+\sectiontitle{Tasks Completed (7 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Describe the main tasks that have been assigned and already completed.
+Max 250 words).
+}
+
+\vspace{0.20cm}
+
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}X
+|>{\raggedright\arraybackslash}X|
+}
+\hline
+
+\textbf{Task Completed} &
+\textbf{Team Member}
+\\
+\hline
+
+\parbox[t][3.25cm][t]{\linewidth}{\fontsize{10.5}{12}\selectfont
+Implemented six algorithm classes, the shared maths module, CSV loading and validation, and the integrated menu. Added KNN sorting, hierarchical merge trees, and PCA projection. Prepared sample datasets and compilation instructions. Compiled successfully and completed sample and selected edge-case checks.}
+&
+\parbox[t][3.25cm][t]{\linewidth}{\fontsize{10.5}{12}\selectfont
+Project team.\\[3pt]
+}
+
+\\
+\hline
+
+\end{tabularx}
+
+\vspace{0.65cm}
+
+% CHALLENGES
+\sectiontitle{Challenges/Roadblocks (7 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Describe the challenges that you have faced or are facing so far
+and how you plan to solve them. Max 300 words).
+}
+
+\vspace{0.18cm}
+
+\answerbox{4.05cm}{Moving from procedural C to C++ required organising data and calculations into classes. Encapsulation and composition now separate responsibilities. Vectors were unfamiliar, so fixed-size arrays and ordinary loops were used, with a 100-row limit.
+
+CSV handling introduced missing-value, separator, and file-path errors; a common loader now validates numerical input. PCA required completing eigenvalue and projection calculations, while hierarchical merging required a tree representation.
+
+Broader validation remains a challenge. The next steps are comparison with standard implementations, additional datasets, and checks of feature scaling and parameter sensitivity.}
+
+\vspace{0.65cm}
+
+% TASKS PENDING
+% \sectiontitle{Tasks Pending (7 pts)}
+
+% \vspace{0.05cm}
+
+% \instruction{
+% (Describe the main tasks that you still need to complete.
+% Max 250 words).
+% }
+
+% \vspace{0.18cm}
+
+% \begin{tabularx}{\textwidth}{
+% |>{\raggedright\arraybackslash}X
+% |>{\raggedright\arraybackslash}X|
+% }
+% \hline
+
+% \textbf{Task Pending} &
+% \textbf{Team Member (to complete the task)}
+% \\
+% \hline
+
+% \parbox[t][1.25cm][t]{\linewidth}{}
+% &
+% \parbox[t][1.25cm][t]{\linewidth}{}
+% \\
+% \hline
+
+% \end{tabularx}
+
+% \newpage
+
+% ============================================================
+% PAGE 4
+% ============================================================
+
+\vspace*{0.30cm}
+
+% OUTCOMES
+\sectiontitle{Project Outcome/Deliverables (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Describe what are the key outcomes / deliverables of the project.
+Max 200 words).
+}
+
+\vspace{0.35cm}
+
+\answerbox{3.35cm}{The deliverables include six C++ algorithm classes, a menu-driven application, a shared mathematics module, a CSV loader, sample datasets, and a README.
+
+Console outputs include regression predictions and training MSE, KNN neighbours and labels, K-Means centroids and clusters, SVM predictions and training accuracy, hierarchical merge trees, and PCA projections with explained variance.
+
+Broader validation evidence, graphical illustrations, verified repository contribution records, and the final presentation remain to be completed.}
+
+\vspace{0.75cm}
+
+% PROGRESS
+\sectiontitle{Progress Overview (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Summarize how much of the project is done, what's behind schedule,
+what's ahead of schedule. Max 200 words.)
+}
+
+\vspace{0.25cm}
+
+\answerbox{4.45cm}{The core implementation is complete: all six algorithms use classes and objects, shared mathematical calculations are available, and CSV input and menu integration are working. Sample checks and selected edge-case tests have passed. Source code, sample datasets, and a project guide have been packaged for repository upload.
+
+The project is now in the validation and documentation stage. Additional dataset evaluation, reference-library comparisons, graphs, and final demonstration evidence remain pending. Repository upload and individual contribution details require confirmation.
+
+Schedule status will be reviewed against the mentor-approved timeline; no ahead-of-schedule or delayed milestone is claimed without that baseline.}
+
+\newpage
+
+% ============================================================
+% PAGE 5
+% ============================================================
+
+\vspace*{0.20cm}
+
+% CODEBASE
+\sectiontitle{Codebase Information (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Repository link, branch, and information about important commits.)
+}
+
+\vspace{0.20cm}
+
+\answerbox{3.70cm}{\textbf{Repository:} https://github.com/Shubhangani-Kotiyal/PBL-ml-algorithms-in-c
+
+\textbf{Branch:} Main.\\
+\textbf{Important commits:} [Shubhangani-Kotiyal,ishanayaag-dev,harshitajoshi16].
+
+The prepared code includes main.cpp, MathUtils and Dataset modules, six algorithm headers, sample CSV files, and a README. The revised package is ready for upload; its repository status has not been verified. Team members will use their own accounts for contribution tracking.}
+
+\vspace{0.65cm}
+
+% TESTING
+\sectiontitle{Testing and Validation Status (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{(Provide information about any tests conducted)}
+
+\vspace{0.30cm}
+
+\begin{tabularx}{\textwidth}{
+|>{\raggedright\arraybackslash}p{0.34\textwidth}
+|>{\raggedright\arraybackslash}p{0.31\textwidth}
+|>{\raggedright\arraybackslash}X|
+}
+\hline
+
+\textbf{Test Type} &
+\textbf{Status (Pass/Fail)} &
+\textbf{Notes}
+\\
+\hline
+
+\parbox[t][1.20cm][t]{\linewidth}{\fontsize{10}{11}\selectfont Compilation, six menu options, sample outputs, and selected edge cases.}
+&
+\parbox[t][1.20cm][t]{\linewidth}{\fontsize{10}{11}\selectfont Pass for checks performed. Broader validation pending.}
+&
+\parbox[t][1.20cm][t]{\linewidth}{\fontsize{10}{11}\selectfont CSV errors, KNN ties, repeated SVM runs, and PCA edge cases checked.}
+\\
+\hline
+
+\end{tabularx}
+
+\vspace{0.65cm}
+
+% DELIVERABLES
+\sectiontitle{Deliverables Progress (2 pts)}
+
+\vspace{0.05cm}
+
+\instruction{
+(Summarize the current status of all key project deliverables
+mentioned earlier. Indicate whether each deliverable is completed,
+in progress, or pending.)
+}
+
+\vspace{0.25cm}
+
+\answerbox{3.20cm}{\textbf{Completed:} Six algorithm classes, shared mathematics, CSV handling, integrated menu, sample datasets, selected tests, and source documentation.
+
+\textbf{In progress:} Phase-III report preparation, team review, and demonstration planning.
+
+\textbf{Pending:} Broader dataset evaluation, comparisons with standard implementations, graphs, and final presentation evidence. Repository upload, branch name, and individual commit records need confirmation.}
+
+\end{document}
