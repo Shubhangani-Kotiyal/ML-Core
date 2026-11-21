@@ -55,13 +55,20 @@ open index.html
 ### Option 2: Local HTTP Server (Python)
 ```bash
 cd frontend
-python3 -m http.server 8080
+python3 -m http.server 8085
 ```
-Then visit [http://localhost:8080](http://localhost:8080) in your browser.
+Then visit [http://localhost:8085](http://localhost:8085) in your browser.
 
 ---
 
-## 🌐 Deploy to GitHub Pages
+## 🌐 Live Internet URL (Public Web Access)
+
+Access the live deployed website instantly from any computer, phone, or browser worldwide:  
+👉 **[https://stunning-taffy-3ed8d5.netlify.app](https://stunning-taffy-3ed8d5.netlify.app)**
+
+---
+
+## 📄 Deploy to GitHub Pages (Alternative Permanent Host)
 To host this live on the web for presentations:
 1. Go to your repository settings on GitHub.
 2. Under **Pages**, select source branch `main` and folder `/frontend` (or copy `index.html`, `style.css`, and `app.js` to `gh-pages` branch).
