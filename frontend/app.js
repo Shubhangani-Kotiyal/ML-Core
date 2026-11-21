@@ -1933,473 +1933,89 @@ function toggleAutoPlay() {
 // ============================================================================
 // Modal & Code Viewer Handlers
 // ============================================================================
-const C_CODE_SNIPPETS = {
-  linear_regression: `// From src/linear_regression.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class LinearRegression : public MLAlgorithm {
-private:
-    double slope, intercept;
-
-public:
-    LinearRegression() : slope(0), intercept(0) {}
-
-    bool fit() {
-        return MathUtils::fitLine(x, y, n, slope, intercept);
-    }
-
-    double predict(double value) const {
-        return MathUtils::predictLine(value, slope, intercept);
-    }
-
-    double calculateMSE() const {
-        double predicted[100];
-        for (int i = 0; i < n; i++) {
-            predicted[i] = predict(x[i]);
-        }
-        return MathUtils::meanSquaredError(y, predicted, n);
-    }
-
-    void display() const {
-        std::cout << "\\nSlope: " << slope;
-        std::cout << "\\nIntercept: " << intercept;
-        std::cout << "\\nTraining MSE: " << calculateMSE() << "\\n";
-    }
-
-    int execute(const char filename[]) override {
-        // Enforce 100-row limit & 2 numeric columns via MLAlgorithm base class
-        if (!loadCSV(filename, 2, 0)) return 1;
-
-        if (!fit()) {
-            std::cout << "Cannot fit a line: all x values are equal.\\n";
-            return 1;
-        }
-
-        display();
-        return 0;
-    }
-};`,
-
-  kmeans: `// From src/kmeans.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class KMeans : public MLAlgorithm {
-private:
-    double centerX[10], centerY[10];
-    int cluster[100];
-    int k;
-
-public:
-    KMeans() : k(0) {}
-
-    bool fit(int numberOfClusters) {
-        if (numberOfClusters < 1 || numberOfClusters > 10 || numberOfClusters > n)
-            return false;
-        k = numberOfClusters;
-
-        // Distinct-centroid initialization: repeated rows must not create identical initial centroids
-        int selected = 0;
-        for (int i = 0; i < n && selected < k; i++) {
-            bool duplicate = false;
-            for (int c = 0; c < selected; c++) {
-                if (x[i] == centerX[c] && y[i] == centerY[c]) duplicate = true;
-            }
-            if (!duplicate) {
-                centerX[selected] = x[i];
-                centerY[selected] = y[i];
-                selected++;
-            }
-        }
-        if (selected < k) {
-            std::cout << "K cannot exceed the number of distinct points.\\n";
-            return false;
-        }
-
-        // Assignment and centroid update loop
-        for (int iteration = 0; iteration < 100; iteration++) {
-            bool changed = false;
-            // 1. Assign each point to its nearest centroid
-            for (int i = 0; i < n; i++) {
-                int nearest = MathUtils::nearestCentroid(x[i], y[i], centerX, centerY, k);
-                if (cluster[i] != nearest) { cluster[i] = nearest; changed = true; }
-            }
-
-            int counts[10] = {0};
-            for (int i = 0; i < n; i++) counts[cluster[i]]++;
-
-            // 2. Donor rebalancing: fill empty cluster without emptying its donor
-            for (int c = 0; c < k; c++) {
-                if (counts[c] != 0) continue;
-                int candidate = -1;
-                double farthest = -1;
-                for (int i = 0; i < n; i++) {
-                    int donor = cluster[i];
-                    if (counts[donor] <= 1) continue;
-                    double distance = MathUtils::squaredDistance(x[i], y[i], centerX[donor], centerY[donor]);
-                    if (distance > farthest) { farthest = distance; candidate = i; }
-                }
-                if (candidate == -1) return false;
-                counts[cluster[candidate]]--;
-                cluster[candidate] = c;
-                counts[c]++;
-                changed = true;
-            }
-
-            if (!changed) return true;
-
-            // 3. Recalculate centroids as cluster means
-            for (int c = 0; c < k; c++) {
-                double clusterX[100], clusterY[100];
-                int clusterSize = 0;
-                for (int i = 0; i < n; i++) {
-                    if (cluster[i] == c) {
-                        clusterX[clusterSize] = x[i];
-                        clusterY[clusterSize] = y[i];
-                        clusterSize++;
-                    }
-                }
-                centerX[c] = MathUtils::mean(clusterX, clusterSize);
-                centerY[c] = MathUtils::mean(clusterY, clusterSize);
-            }
-        }
-        return true;
-    }
-
-    int execute(const char filename[]) override {
-        if (!loadCSV(filename, 1, 0)) return 1;
-        // Prompt K, fit(k), and display cluster groups...
-        return 0;
-    }
-};`,
-
-  svm: `// From src/svm.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class SVM : public MLAlgorithm {
-private:
-    double weights[2], bias;
-    double learningRate, lambda;
-    int epochs;
-
-public:
-    SVM() : bias(0), learningRate(0.001), lambda(0.01), epochs(2000) {
-        weights[0] = 0; weights[1] = 0;
-    }
-
-    void fit() {
-        weights[0] = 0; weights[1] = 0; bias = 0;
-        for (int epoch = 0; epoch < epochs; epoch++) {
-            for (int i = 0; i < n; i++) {
-                MathUtils::updateSVM(x[i], y[i], labels[i],
-                                    weights, bias, learningRate, lambda);
-            }
-        }
-    }
-
-    int predict(double newX, double newY) const {
-        double score = MathUtils::svmScore(newX, newY, weights, bias);
-        return score >= 0 ? 1 : -1;
-    }
-
-    int execute(const char filename[]) override {
-        // Enforces labelMode 1: exactly 3 columns (x, y, label in {-1, 1}) and both classes present
-        if (!loadCSV(filename, 2, 1)) return 1;
-        fit();
-        // classify test coordinates and calculate training accuracy...
-        return 0;
-    }
-};`,
-
-  hierarchical: `// From src/hierarchical_clustering.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class HierarchicalClustering : public MLAlgorithm {
-private:
-    int members[100][100];
-    int count[100];
-    bool active[100];
-    int clusterCount;
-
-public:
-    HierarchicalClustering() : clusterCount(0) {
-        for (int i = 0; i < 100; i++) { count[i] = 0; active[i] = false; }
-    }
-
-    bool fit(int targetClusters) {
-        if (targetClusters < 1 || targetClusters > n) return false;
-        for (int i = 0; i < n; i++) {
-            members[i][0] = i; count[i] = 1; active[i] = true;
-        }
-        clusterCount = n;
-
-        // Agglomerative single-linkage merges
-        while (clusterCount > targetClusters) {
-            int bestA = -1, bestB = -1;
-            double minDistance = 0;
-            bool foundFirst = false;
-
-            for (int i = 0; i < n; i++) {
-                if (!active[i]) continue;
-                for (int j = i + 1; j < n; j++) {
-                    if (!active[j]) continue;
-                    double d = MathUtils::singleLinkDistance(x, y, members[i], count[i], members[j], count[j]);
-                    if (!foundFirst || d < minDistance) {
-                        minDistance = d; bestA = i; bestB = j; foundFirst = true;
-                    }
-                }
-            }
-            if (bestA == -1) return false;
-            // Merge cluster B into cluster A
-            for (int i = 0; i < count[bestB]; i++) {
-                members[bestA][count[bestA]++] = members[bestB][i];
-            }
-            active[bestB] = false;
-            clusterCount--;
-        }
-        return true;
-    }
-
-    int execute(const char filename[]) override {
-        if (!loadCSV(filename, 2, 0)) return 1;
-        // Prompt targetClusters, fit, and display groups...
-        return 0;
-    }
-};`,
-
-  pca: `// From src/pca.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class PCA : public MLAlgorithm {
-private:
-    double center[2], component[2], explainedRatio;
-
-public:
-    PCA() : explainedRatio(0) {
-        center[0] = 0; center[1] = 0;
-        component[0] = 0; component[1] = 0;
-    }
-
-    bool fit() {
-        return MathUtils::fitPCA2D(x, y, n, center, component, explainedRatio);
-    }
-
-    double project(double newX, double newY) const {
-        return MathUtils::projectPoint2D(newX, newY, center, component);
-    }
-
-    int execute(const char filename[]) override {
-        if (!loadCSV(filename, 2, 0)) return 1;
-        if (!fit()) return 1;
-        // Output PC1 axis, center, and explained variance ratio...
-        return 0;
-    }
-};`,
-
-  knn: `// From src/knn.cpp
-#include "MathUtils.h"
-#include "MLAlgorithm.h"
-
-class KNN : public MLAlgorithm {
-public:
-    KNN() {}
-
-    int predict(double newX, double newY, int k) const {
-        double distance[100];
-        int index[100];
-        for (int i = 0; i < n; i++) {
-            distance[i] = MathUtils::euclideanDistance(newX, newY, x[i], y[i]);
-            index[i] = i;
-        }
-        // Partial selection sort for K nearest neighbors
-        for (int i = 0; i < k; i++) {
-            int minIdx = i;
-            for (int j = i + 1; j < n; j++) {
-                if (distance[j] < distance[minIdx]) minIdx = j;
-            }
-            std::swap(distance[i], distance[minIdx]);
-            std::swap(index[i], index[minIdx]);
-        }
-        // Count votes among the K nearest neighbors and return majority class
-        return MathUtils::majorityVote(labels, index, k);
-    }
-
-    int execute(const char filename[]) override {
-        // Enforces labelMode 2: 3 columns with non-negative integer labels
-        if (!loadCSV(filename, 1, 2)) return 1;
-        // Prompt test coordinates & K, predict, and report votes...
-        return 0;
-    }
-};`
+const BACKEND_CODE_FILES = {
+  linear_regression: {
+    path: "src/linear_regression.cpp",
+    title: "Linear Regression Class (Least Squares)",
+    desc: "Least Squares Regression class inheriting from MLAlgorithm base class with covariance/variance slope calculation and MSE",
+    lines: "67 lines",
+    size: "1.5 KB",
+    code: "#include <iostream>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nclass LinearRegression : public MLAlgorithm {\nprivate:\n    double slope, intercept;\n\npublic:\n    LinearRegression() {\n        slope = 0;\n        intercept = 0;\n    }\n\n    bool fit() {\n        return MathUtils::fitLine(x, y, n, slope, intercept);\n    }\n\n    double predict(double value) const {\n        return MathUtils::predictLine(value, slope, intercept);\n    }\n\n    double calculateMSE() const {\n        double predicted[100];\n\n        for (int i = 0; i < n; i++) {\n            predicted[i] = predict(x[i]);\n        }\n\n        return MathUtils::meanSquaredError(y, predicted, n);\n    }\n\n    void display() const {\n        cout << \"\\nSlope: \" << slope;\n        cout << \"\\nIntercept: \" << intercept;\n        cout << \"\\nTraining MSE: \" << calculateMSE() << \"\\n\";\n    }\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 2, 0))\n            return 1;\n    \n        if (!fit()) {\n            cout << \"Cannot fit a line: all x values are equal.\\n\";\n            return 1;\n        }\n    \n        display();\n    \n        double value;\n        cout << \"\\nEnter x to predict y: \";\n    \n        if (!(cin >> value) || !isfinite(value)) {\n            cout << \"Please enter a number.\\n\";\n            return 1;\n        }\n    \n        cout << \"Predicted y: \" << predict(value) << \"\\n\";\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getLinearRegression() {\n    static LinearRegression model;\n    return model;\n}\n"
+  },
+  kmeans: {
+    path: "src/kmeans.cpp",
+    title: "K-Means Lloyd Clustering Class",
+    desc: "Lloyd iteration with distinct centroid initialization, empty-cluster donor rebalancing, and MLAlgorithm base inheritance",
+    lines: "164 lines",
+    size: "4.6 KB",
+    code: "#include <iostream>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nclass KMeans : public MLAlgorithm {\nprivate:\n    double centerX[10], centerY[10];\n    int cluster[100];\n    int k;\n\npublic:\n    KMeans() {\n        k = 0;\n    }\n\n    bool fit(int numberOfClusters) {\n        if (numberOfClusters < 1 ||\n            numberOfClusters > 10 ||\n            numberOfClusters > n) {\n            cout << \"K must be between 1 and 10\";\n            cout << \" and cannot exceed the number of points.\\n\";\n            return false;\n        }\n\n        k = numberOfClusters;\n\n        // Repeated rows must not create identical initial centroids.\n        int selected = 0;\n        for (int i = 0; i < n && selected < k; i++) {\n            bool duplicate = false;\n            for (int c = 0; c < selected; c++) {\n                if (x[i] == centerX[c] && y[i] == centerY[c])\n                    duplicate = true;\n            }\n            if (!duplicate) {\n                centerX[selected] = x[i];\n                centerY[selected] = y[i];\n                selected++;\n            }\n        }\n        if (selected < k) {\n            cout << \"K cannot exceed the number of distinct points.\\n\";\n            return false;\n        }\n\n        for (int i = 0; i < n; i++) {\n            cluster[i] = -1;\n        }\n\n        // Repeat assignment and centroid updates.\n        for (int iteration = 0; iteration < 100; iteration++) {\n            bool changed = false;\n\n            // Assign each point to its nearest centroid.\n            for (int i = 0; i < n; i++) {\n                int nearest = MathUtils::nearestCentroid(\n                    x[i], y[i], centerX, centerY, k\n                );\n\n                if (cluster[i] != nearest) {\n                    cluster[i] = nearest;\n                    changed = true;\n                }\n            }\n\n            int counts[10] = {0};\n            for (int i = 0; i < n; i++)\n                counts[cluster[i]]++;\n\n            // Fill an empty cluster without emptying its donor cluster.\n            for (int c = 0; c < k; c++) {\n                if (counts[c] != 0)\n                    continue;\n                int candidate = -1;\n                double farthest = -1;\n                for (int i = 0; i < n; i++) {\n                    int donor = cluster[i];\n                    if (counts[donor] <= 1)\n                        continue;\n                    double distance = MathUtils::squaredDistance(\n                        x[i], y[i], centerX[donor], centerY[donor]);\n                    if (distance > farthest) {\n                        farthest = distance;\n                        candidate = i;\n                    }\n                }\n                if (candidate == -1) {\n                    cout << \"Unable to fill an empty cluster.\\n\";\n                    return false;\n                }\n                counts[cluster[candidate]]--;\n                cluster[candidate] = c;\n                counts[c]++;\n                changed = true;\n            }\n\n            if (!changed)\n                return true;\n\n            // Recalculate each centroid using its cluster's points.\n            for (int c = 0; c < k; c++) {\n                double groupX[100], groupY[100];\n                int count = 0;\n\n                for (int i = 0; i < n; i++) {\n                    if (cluster[i] == c) {\n                        groupX[count] = x[i];\n                        groupY[count] = y[i];\n                        count++;\n                    }\n                }\n\n                centerX[c] = MathUtils::mean(groupX, count);\n                centerY[c] = MathUtils::mean(groupY, count);\n            }\n        }\n\n        cout << \"Warning: reached 100 iterations; convergence is not guaranteed.\\n\";\n        return true;\n    }\n\n    void display() const {\n        cout << \"\\nK-Means Results\\n\";\n\n        for (int c = 0; c < k; c++) {\n            cout << \"\\nCluster \" << c + 1;\n            cout << \"\\nCentroid: (\" << centerX[c];\n            cout << \", \" << centerY[c] << \")\\n\";\n\n            for (int i = 0; i < n; i++) {\n                if (cluster[i] == c) {\n                    cout << \"(\" << x[i] << \", \" << y[i] << \")\\n\";\n                }\n            }\n        }\n    }\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 1, 0))\n            return 1;\n    \n        int k;\n    \n        cout << \"Enter the number of clusters: \";\n    \n        if (!(cin >> k)) {\n            cout << \"Please enter an integer.\\n\";\n            return 1;\n        }\n    \n        if (!fit(k))\n            return 1;\n    \n        display();\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getKMeans() {\n    static KMeans model;\n    return model;\n}\n\n"
+  },
+  svm: {
+    path: "src/svm.cpp",
+    title: "Linear Support Vector Machine (SVM)",
+    desc: "Stochastic hinge-loss subgradient descent with L2 regularization and separating hyperplane normal vector updates",
+    lines: "104 lines",
+    size: "2.3 KB",
+    code: "#include <iostream>\n#include <cmath>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nclass SVM : public MLAlgorithm {\nprivate:\n\n    double weights[2];\n    double bias;\n    double learningRate;\n    double lambda;\n    int epochs;\n\npublic:\n    SVM() {\n        weights[0] = 0;\n        weights[1] = 0;\n        bias = 0;\n\n        learningRate = 0.001;\n        lambda = 0.01;\n        epochs = 2000;\n    }\n\n    void fit() {\n        // Start fresh whenever training is called.\n        weights[0] = 0;\n        weights[1] = 0;\n        bias = 0;\n\n        for (int epoch = 0; epoch < epochs; epoch++) {\n            for (int i = 0; i < n; i++) {\n                MathUtils::updateSVM(\n                    x[i], y[i], labels[i],\n                    weights, bias, learningRate, lambda\n                );\n            }\n        }\n    }\n\n    int predict(double newX, double newY) const {\n        double score = MathUtils::svmScore(\n            newX, newY, weights, bias\n        );\n\n        if (score >= 0)\n            return 1;\n\n        return -1;\n    }\n\n    void display() const {\n        cout << \"\\nWeight 1: \" << weights[0];\n        cout << \"\\nWeight 2: \" << weights[1];\n        cout << \"\\nBias: \" << bias << \"\\n\";\n\n        int correct = 0;\n\n        cout << \"\\nTraining predictions:\\n\";\n\n        for (int i = 0; i < n; i++) {\n            int result = predict(x[i], y[i]);\n\n            cout << \"(\" << x[i] << \", \" << y[i] << \")\";\n            cout << \" Actual: \" << labels[i];\n            cout << \" Predicted: \" << result << \"\\n\";\n\n            if (result == labels[i])\n                correct++;\n        }\n\n        cout << \"\\nCorrect training predictions: \";\n        cout << correct << \" out of \" << n << \"\\n\";\n    }\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 1, 1))\n            return 1;\n    \n        fit();\n        display();\n    \n        double newX, newY;\n    \n        cout << \"\\nEnter two features of the new point: \";\n    \n        if (!(cin >> newX >> newY) ||\n            !isfinite(newX) || !isfinite(newY)) {\n            cout << \"Please enter two finite numbers.\\n\";\n            return 1;\n        }\n    \n        cout << \"Predicted class: \";\n        cout << predict(newX, newY) << \"\\n\";\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getSVM() {\n    static SVM model;\n    return model;\n}\n"
+  },
+  hierarchical: {
+    path: "src/hierarchical_clustering.cpp",
+    title: "Agglomerative Hierarchical Clustering",
+    desc: "Bottom-up single-linkage clustering repeatedly merging closest cluster pairs at minimum Euclidean distance",
+    lines: "133 lines",
+    size: "3.3 KB",
+    code: "#include <iostream>\n#include <cmath>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nclass HierarchicalClustering : public MLAlgorithm {\nprivate:\n\n    // Each row stores the point indices belonging to a cluster.\n    int members[100][100];\n    int count[100];\n    bool active[100];\n    int clusterCount;\n\npublic:\n    HierarchicalClustering() {\n        clusterCount = 0;\n\n        for (int i = 0; i < 100; i++) {\n            count[i] = 0;\n            active[i] = false;\n        }\n    }\n\n    bool fit(int targetClusters) {\n        if (targetClusters < 1 || targetClusters > n) {\n            cout << \"Cluster count must be between 1 and \" << n << \".\\n\";\n            return false;\n        }\n\n        // Initially, every point forms its own cluster.\n        for (int i = 0; i < n; i++) {\n            members[i][0] = i;\n            count[i] = 1;\n            active[i] = true;\n        }\n\n        clusterCount = n;\n\n        while (clusterCount > targetClusters) {\n            int bestA = -1;\n            int bestB = -1;\n            double minimumDistance = 0;\n\n            // Find the closest pair of active clusters.\n            for (int i = 0; i < n; i++) {\n                if (!active[i])\n                    continue;\n\n                for (int j = i + 1; j < n; j++) {\n                    if (!active[j])\n                        continue;\n\n                    double distance = MathUtils::singleLinkDistance(\n                        x, y,\n                        members[i], count[i],\n                        members[j], count[j]\n                    );\n\n                    if (bestA == -1 || distance < minimumDistance) {\n                        minimumDistance = distance;\n                        bestA = i;\n                        bestB = j;\n                    }\n                }\n            }\n\n            // Move every member of cluster B into cluster A.\n            for (int i = 0; i < count[bestB]; i++) {\n                members[bestA][count[bestA]] = members[bestB][i];\n                count[bestA]++;\n            }\n\n            active[bestB] = false;\n            count[bestB] = 0;\n            clusterCount--;\n\n            cout << \"Merged group \" << bestB + 1;\n            cout << \" into group \" << bestA + 1;\n            cout << \" at distance \" << minimumDistance << \"\\n\";\n        }\n\n        return true;\n    }\n\n    void display() const {\n        int displayNumber = 1;\n\n        cout << \"\\nFinal clusters:\\n\";\n\n        for (int i = 0; i < n; i++) {\n            if (!active[i])\n                continue;\n\n            cout << \"\\nCluster \" << displayNumber << \":\\n\";\n\n            for (int j = 0; j < count[i]; j++) {\n                int point = members[i][j];\n\n                cout << \"P\" << point + 1;\n                cout << \" (\" << x[point] << \", \" << y[point] << \")\\n\";\n            }\n\n            displayNumber++;\n        }\n    }\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 1, 0))\n            return 1;\n    \n        int target;\n    \n        cout << \"Enter the desired number of clusters: \";\n    \n        if (!(cin >> target)) {\n            cout << \"Please enter an integer.\\n\";\n            return 1;\n        }\n    \n        if (!fit(target))\n            return 1;\n    \n        display();\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getHierarchicalClustering() {\n    static HierarchicalClustering model;\n    return model;\n}\n"
+  },
+  pca: {
+    path: "src/pca.cpp",
+    title: "Principal Component Analysis (PCA: 2D -> 1D)",
+    desc: "Centers 2D points, computes 2x2 sample covariance matrix, and projects onto dominant PC1 eigenvector",
+    lines: "74 lines",
+    size: "1.6 KB",
+    code: "#include <iostream>\n#include <cmath>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nclass PCA : public MLAlgorithm {\nprivate:\n    double transformed[100];\n\n    double center[2];\n    double component[2];\n    double explainedRatio;\n\npublic:\n    PCA() {\n        center[0] = 0;\n        center[1] = 0;\n        component[0] = 0;\n        component[1] = 0;\n        explainedRatio = 0;\n    }\n\n    bool fit() {\n        return MathUtils::fitPCA2D(\n            x, y, n, center, component, explainedRatio\n        );\n    }\n\n    void transform() {\n        for (int i = 0; i < n; i++) {\n            transformed[i] = MathUtils::projectPoint2D(\n                x[i], y[i], center, component\n            );\n        }\n    }\n\n    void display() const {\n        cout << \"\\nMean of first feature: \" << center[0];\n        cout << \"\\nMean of second feature: \" << center[1];\n\n        cout << \"\\n\\nFirst principal component: (\";\n        cout << component[0] << \", \" << component[1] << \")\\n\";\n\n        cout << \"Explained variance ratio: \";\n        cout << explainedRatio << \"\\n\";\n\n        cout << \"\\nOriginal point -> Reduced value\\n\";\n\n        for (int i = 0; i < n; i++) {\n            cout << \"(\" << x[i] << \", \" << y[i] << \")\";\n            cout << \" -> \" << transformed[i] << \"\\n\";\n        }\n    }\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 2, 0))\n            return 1;\n    \n        if (!fit()) {\n            cout << \"PCA needs variation in the data.\\n\";\n            return 1;\n        }\n    \n        transform();\n        display();\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getPCA() {\n    static PCA model;\n    return model;\n}\n"
+  },
+  knn: {
+    path: "src/knn.cpp",
+    title: "K-Nearest Neighbors Classifier",
+    desc: "Euclidean distance calculation, partial selection sort for K smallest distances, and majority vote class prediction",
+    lines: "114 lines",
+    size: "3.0 KB",
+    code: "#include <iostream>\n#include <cmath>\n#include \"MathUtils.h\"\n#include \"MLAlgorithm.h\"\n\nusing namespace std;\n\nclass KNN : public MLAlgorithm {\npublic:\n    KNN() {\n    }\n\n    int getSize() const {\n        return n;\n    }\n\n    // Call after loading data and checking that 1 <= k <= n.\n    int predict(double newX, double newY, int k) const {\n        double distance[100];\n        int index[100];\n\n        // Reuse the distance formula from MathUtils.h.\n        for (int i = 0; i < n; i++) {\n            distance[i] = MathUtils::euclideanDistance(\n                newX, newY, x[i], y[i]\n            );\n\n            index[i] = i;\n        }\n\n        // Sort distances, keeping each point's index alongside it.\n        for (int i = 0; i < n - 1; i++) {\n            for (int j = 0; j < n - i - 1; j++) {\n                if (distance[j] > distance[j + 1]) {\n                    double tempDistance = distance[j];\n                    distance[j] = distance[j + 1];\n                    distance[j + 1] = tempDistance;\n\n                    int tempIndex = index[j];\n                    index[j] = index[j + 1];\n                    index[j + 1] = tempIndex;\n                }\n            }\n        }\n\n        cout << \"\\nNearest neighbours:\\n\";\n\n        for (int i = 0; i < k; i++) {\n            int point = index[i];\n\n            cout << \"(\" << x[point] << \", \" << y[point] << \")\";\n            cout << \"  Class: \" << labels[point];\n            cout << \"  Distance: \" << distance[i] << \"\\n\";\n        }\n\n        int predictedClass = labels[index[0]];\n        int highestVotes = 0;\n\n        // Count votes for each class among the nearest K points.\n        for (int i = 0; i < k; i++) {\n            int currentClass = labels[index[i]];\n            int votes = 0;\n\n            for (int j = 0; j < k; j++) {\n                if (labels[index[j]] == currentClass)\n                    votes++;\n            }\n\n            // If votes tie, choose the smaller class label.\n            if (votes > highestVotes ||\n                (votes == highestVotes &&\n                 currentClass < predictedClass)) {\n                highestVotes = votes;\n                predictedClass = currentClass;\n            }\n        }\n\n        return predictedClass;\n    }\n\n    int execute(const char filename[]) override {\n        if (!loadCSV(filename, 1, 2))\n            return 1;\n    \n        int k;\n        double newX, newY;\n    \n        cout << \"Enter K (1 to \" << getSize() << \"): \";\n    \n        if (!(cin >> k) || k < 1 || k > getSize()) {\n            cout << \"Invalid K.\\n\";\n            return 1;\n        }\n    \n        cout << \"Enter the two features of the point: \";\n    \n        if (!(cin >> newX >> newY) ||\n            !isfinite(newX) || !isfinite(newY)) {\n            cout << \"Please enter two valid numbers.\\n\";\n            return 1;\n        }\n    \n        int result = predict(newX, newY, k);\n    \n        cout << \"\\nPredicted class: \" << result << \"\\n\";\n    \n        return 0;\n    }\n};\n\nMLAlgorithm& getKNN() {\n    static KNN model;\n    return model;\n}\n"
+  },
+  menu: {
+    path: "src/ml_algorithms_menu.cpp",
+    title: "Polymorphic CLI Driver / Menu (main)",
+    desc: "Integrated console menu exercising all six algorithms via MLAlgorithm base-class pointer runtime polymorphism",
+    lines: "44 lines",
+    size: "1.5 KB",
+    code: "#include <iostream>\n#include <string>\n#include \"MLAlgorithm.h\"\nusing namespace std;\n\nint main() {\n    MLAlgorithm* models[] = {\n        &getLinearRegression(), &getKMeans(), &getSVM(),\n        &getHierarchicalClustering(), &getPCA(), &getKNN()\n    };\n    const char* defaults[] = {\n        \"datasets/linear_regression.csv\", \"datasets/kmeans.csv\",\n        \"datasets/svm.csv\", \"datasets/hierarchical_clustering.csv\",\n        \"datasets/pca.csv\", \"datasets/knn.csv\"\n    };\n    while (true) {\n        cout << \"\\n========== ML-CORE ==========\\n\";\n        cout << \"1. Linear Regression\\n2. K-Means\\n3. SVM\\n\";\n        cout << \"4. Hierarchical Clustering\\n5. PCA\\n6. KNN\\n0. Exit\\n\";\n        cout << \"Enter choice: \";\n        int choice;\n        if (!(cin >> choice)) {\n            cout << \"Invalid input. Restart and enter an integer.\\n\";\n            return 1;\n        }\n        if (choice == 0) return 0;\n        if (choice < 1 || choice > 6) {\n            cout << \"Choose 0 to 6.\\n\";\n            continue;\n        }\n        cout << \"CSV path (or - for \" << defaults[choice - 1] << \"): \";\n        string filename;\n        if (!getline(cin >> ws, filename)) return 1;\n        if (filename == \"-\") filename = defaults[choice - 1];\n\n        // Runtime polymorphism: calls the selected derived class's override.\n        int status = models[choice - 1]->execute(filename.c_str());\n        if (!cin) {\n            cout << \"Input stopped. Restart the program.\\n\";\n            return 1;\n        }\n        if (status != 0) cout << \"Algorithm could not complete; see message above.\\n\";\n    }\n}\n"
+  },
+  base: {
+    path: "include/MLAlgorithm.h",
+    title: "Abstract Base Class & CSV Loader",
+    desc: "Base class defining MAX_ROWS=100 cap, CSV line validation, numeric checking, and virtual execute(filename)",
+    lines: "113 lines",
+    size: "3.7 KB",
+    code: "#ifndef ML_ALGORITHM_H\n#define ML_ALGORITHM_H\n\n#include <iostream>\n#include <fstream>\n#include <sstream>\n#include <string>\n#include <cmath>\n#include <climits>\n\nclass MLAlgorithm {\nprotected:\n    enum { MAX_ROWS = 100 };\n    double x[MAX_ROWS], y[MAX_ROWS];\n    int labels[MAX_ROWS];\n    int n;\n\n    // labelMode: 0 = two numeric columns, 1 = SVM, 2 = KNN.\n    bool loadCSV(const char filename[], int minimumRows, int labelMode = 0) {\n        n = 0;\n        std::ifstream file(filename);\n        if (!file) {\n            std::cout << \"Unable to open CSV: \" << filename << \"\\n\";\n            return false;\n        }\n        std::string line;\n        int lineNumber = 0;\n        int count = 0;\n        while (std::getline(file, line)) {\n            ++lineNumber;\n            if (line.find_first_not_of(\" \\t\\r\") == std::string::npos)\n                continue;\n            if (count == MAX_ROWS) {\n                std::cout << \"Maximum 100 data rows allowed. File rejected.\\n\";\n                return false;\n            }\n            std::stringstream row(line);\n            double values[3] = {0, 0, 0};\n            int columns = labelMode == 0 ? 2 : 3;\n            for (int j = 0; j < columns; ++j) {\n                if (!(row >> values[j]) || !std::isfinite(values[j])) {\n                    std::cout << \"Invalid or missing number on CSV line \"\n                              << lineNumber << \".\\n\";\n                    return false;\n                }\n                if (j < columns - 1) {\n                    char comma;\n                    if (!(row >> comma) || comma != ',') {\n                        std::cout << \"Expected comma on CSV line \"\n                                  << lineNumber << \".\\n\";\n                        return false;\n                    }\n                }\n            }\n            row >> std::ws;\n            if (!row.eof()) {\n                std::cout << \"Extra data on CSV line \" << lineNumber << \".\\n\";\n                return false;\n            }\n            if (labelMode != 0) {\n                double label = values[2];\n                if (std::floor(label) != label || label < INT_MIN || label > INT_MAX) {\n                    std::cout << \"Class labels must be integers in the int range.\\n\";\n                    return false;\n                }\n                if (labelMode == 1 && label != -1 && label != 1) {\n                    std::cout << \"SVM labels must be -1 or 1.\\n\";\n                    return false;\n                }\n                labels[count] = static_cast<int>(label);\n            }\n            x[count] = values[0];\n            y[count] = values[1];\n            ++count;\n        }\n        if (file.bad()) {\n            std::cout << \"Error reading CSV file.\\n\";\n            return false;\n        }\n        if (count < minimumRows) {\n            std::cout << \"At least \" << minimumRows << \" data rows required.\\n\";\n            return false;\n        }\n        if (labelMode == 1) {\n            bool positive = false, negative = false;\n            for (int i = 0; i < count; ++i) {\n                if (labels[i] == 1) positive = true;\n                if (labels[i] == -1) negative = true;\n            }\n            if (!positive || !negative) {\n                std::cout << \"SVM data must contain both classes.\\n\";\n                return false;\n            }\n        }\n        n = count;\n        return true;\n    }\n\npublic:\n    MLAlgorithm() : n(0) {}\n    virtual ~MLAlgorithm() {}\n    virtual int execute(const char filename[]) = 0;\n};\n\n// Objects remain in their own source files; the menu uses base references.\nMLAlgorithm& getLinearRegression();\nMLAlgorithm& getKMeans();\nMLAlgorithm& getSVM();\nMLAlgorithm& getHierarchicalClustering();\nMLAlgorithm& getPCA();\nMLAlgorithm& getKNN();\n\n#endif\n"
+  },
+  math: {
+    path: "include/MathUtils.h",
+    title: "Shared Mathematics & Vector Engine",
+    desc: "Inline functions for mean, dotProduct, squaredDistance, covariance, SVM update, and PCA eigenvalue decomposition",
+    lines: "232 lines",
+    size: "7.4 KB",
+    code: "#ifndef MATH_UTILS_H\n#define MATH_UTILS_H\n\n#include <cmath>\n#include <cassert>\n\n// Arrays must contain finite numbers and have the stated lengths.\n// assert checks invalid function arguments while developing the project.\n// inline allows multiple .cpp files to include this header safely.\nnamespace MathUtils {\n\n// ---------- Common calculations ----------\n\ninline double mean(const double values[], int n) {\n    assert(n > 0);\n    double sum = 0;\n    for (int i = 0; i < n; i++)\n        sum += values[i];\n    return sum / n;\n}\n\ninline double dotProduct(const double a[], const double b[], int n) {\n    assert(n > 0);\n    double total = 0;\n    for (int i = 0; i < n; i++)\n        total += a[i] * b[i];\n    return total;\n}\n\n// The squared-distance formula is written only here.\ninline double squaredDistance(const double a[], const double b[], int n) {\n    assert(n > 0);\n    double total = 0;\n    for (int i = 0; i < n; i++) {\n        double difference = a[i] - b[i];\n        total += difference * difference;\n    }\n    return total;\n}\n\n// Overload for existing 2D code: delegates to the array version.\ninline double squaredDistance(double x1, double y1, double x2, double y2) {\n    double a[2] = {x1, y1};\n    double b[2] = {x2, y2};\n    return squaredDistance(a, b, 2);\n}\n\n// KNN can call this to display actual distances.\ninline double euclideanDistance(double x1, double y1, double x2, double y2) {\n    return std::sqrt(squaredDistance(x1, y1, x2, y2));\n}\n\n// MSE reuses the sum of squared differences.\ninline double meanSquaredError(const double actual[],\n                               const double predicted[], int n) {\n    assert(n > 0);\n    return squaredDistance(actual, predicted, n) / n;\n}\n\n// Sample covariance, shared by regression and PCA.\ninline double covariance(const double x[], const double y[], int n) {\n    assert(n >= 2);\n    double meanX = mean(x, n);\n    double meanY = mean(y, n);\n    double total = 0;\n    for (int i = 0; i < n; i++)\n        total += (x[i] - meanX) * (y[i] - meanY);\n    return total / (n - 1);\n}\n\ninline double variance(const double values[], int n) {\n    return covariance(values, values, n);\n}\n\n// Shared weighted sum plus bias.\ninline double linearScore(const double features[], const double weights[],\n                          int n, double bias) {\n    return dotProduct(features, weights, n) + bias;\n}\n\n// ---------- Linear Regression ----------\n\ninline bool fitLine(const double x[], const double y[], int n,\n                    double &slope, double &intercept) {\n    if (n < 2)\n        return false;\n    double varX = variance(x, n);\n    if (varX == 0)\n        return false;\n\n    slope = covariance(x, y, n) / varX;\n    intercept = mean(y, n) - slope * mean(x, n);\n    return true;\n}\n\ninline double predictLine(double x, double slope, double intercept) {\n    double features[1] = {x};\n    double weights[1] = {slope};\n    return linearScore(features, weights, 1, intercept);\n}\n\n// ---------- K-Means ----------\n// Update each centroid using mean() on its cluster's coordinates.\n\ninline int nearestCentroid(double x, double y, const double centerX[],\n                           const double centerY[], int k) {\n    assert(k > 0);\n    int nearest = 0;\n    double minimum = squaredDistance(x, y, centerX[0], centerY[0]);\n    for (int i = 1; i < k; i++) {\n        double distance = squaredDistance(x, y, centerX[i], centerY[i]);\n        if (distance < minimum) {\n            minimum = distance;\n            nearest = i;\n        }\n    }\n    return nearest;\n}\n\n// ---------- Hierarchical Clustering ----------\n// Member arrays contain valid indices of points in two nonempty clusters.\n\ninline double singleLinkDistance(const double x[], const double y[],\n                                 const int membersA[], int countA,\n                                 const int membersB[], int countB) {\n    assert(countA > 0 && countB > 0);\n    int bestA = membersA[0];\n    int bestB = membersB[0];\n    double minimum = squaredDistance(x[bestA], y[bestA], x[bestB], y[bestB]);\n\n    for (int i = 0; i < countA; i++) {\n        for (int j = 0; j < countB; j++) {\n            int a = membersA[i];\n            int b = membersB[j];\n            double distance = squaredDistance(x[a], y[a], x[b], y[b]);\n            if (distance < minimum) {\n                minimum = distance;\n                bestA = a;\n                bestB = b;\n            }\n        }\n    }\n    return euclideanDistance(x[bestA], y[bestA], x[bestB], y[bestB]);\n}\n\n// ---------- Linear SVM ----------\n\ninline double svmScore(double x, double y,\n                       const double weights[], double bias) {\n    double features[2] = {x, y};\n    return linearScore(features, weights, 2, bias);\n}\n\n// Hinge-loss update with L2 regularization.\ninline void updateSVM(double x, double y, int label, double weights[],\n                      double &bias, double learningRate, double lambda) {\n    assert((label == -1 || label == 1) && learningRate > 0 && lambda >= 0);\n    double features[2] = {x, y};\n    bool insideMargin = label * svmScore(x, y, weights, bias) < 1;\n\n    for (int j = 0; j < 2; j++) {\n        double gradient = lambda * weights[j];\n        if (insideMargin)\n            gradient -= label * features[j];\n        weights[j] -= learningRate * gradient;\n    }\n    if (insideMargin)\n        bias += learningRate * label;\n}\n\n// ---------- PCA: exactly two features reduced to one ----------\n\ninline void covarianceMatrix2D(const double x[], const double y[], int n,\n                               double matrix[2][2]) {\n    matrix[0][0] = variance(x, n);\n    matrix[0][1] = covariance(x, y, n);\n    matrix[1][0] = matrix[0][1];\n    matrix[1][1] = variance(y, n);\n}\n\n// Eigenvalues of a symmetric 2x2 covariance matrix, largest first.\ninline void eigenvalues2D(const double matrix[2][2], double eigenvalues[]) {\n    double halfTrace = (matrix[0][0] + matrix[1][1]) / 2;\n    double halfDifference = (matrix[0][0] - matrix[1][1]) / 2;\n    double radius = std::hypot(halfDifference, matrix[0][1]);\n    eigenvalues[0] = halfTrace + radius;\n    eigenvalues[1] = halfTrace - radius;\n}\n\ninline bool principalComponent2D(const double matrix[2][2],\n                                 double component[], double &explainedRatio) {\n    double totalVariance = matrix[0][0] + matrix[1][1];\n    if (totalVariance <= 0) {\n        component[0] = 1;\n        component[1] = 0;\n        explainedRatio = 0;\n        return false;\n    }\n\n    double eigenvalues[2];\n    eigenvalues2D(matrix, eigenvalues);\n    double angle = 0.5 * std::atan2(2 * matrix[0][1],\n                                   matrix[0][0] - matrix[1][1]);\n    component[0] = std::cos(angle);\n    component[1] = std::sin(angle);\n    explainedRatio = eigenvalues[0] / totalVariance;\n    return true;\n}\n\n// The returned component is a unit vector. Equal eigenvalues mean\n// no unique preferred direction; this implementation selects one.\ninline bool fitPCA2D(const double x[], const double y[], int n,\n                     double center[], double component[], double &explainedRatio) {\n    if (n < 2)\n        return false;\n    center[0] = mean(x, n);\n    center[1] = mean(y, n);\n    double matrix[2][2];\n    covarianceMatrix2D(x, y, n, matrix);\n    return principalComponent2D(matrix, component, explainedRatio);\n}\n\ninline double projectPoint2D(double x, double y, const double center[],\n                             const double component[]) {\n    double centered[2] = {x - center[0], y - center[1]};\n    return dotProduct(centered, component, 2);\n}\n\n} // namespace MathUtils\n\n#endif\n\n"
+  },
+  makefile: {
+    path: "Makefile",
+    title: "Project Build Configuration",
+    desc: "GNU Make build rules compiling all 7 source files with -std=c++11 -Wall -Wextra -pedantic into ./ml_core",
+    lines: "21 lines",
+    size: "0.5 KB",
+    code: "CXX = g++\nCPPFLAGS = -Iinclude\nCXXFLAGS = -std=c++11 -Wall -Wextra -pedantic\nSOURCES = src/ml_algorithms_menu.cpp src/linear_regression.cpp src/kmeans.cpp src/svm.cpp src/hierarchical_clustering.cpp src/pca.cpp src/knn.cpp\n\n.PHONY: all run clean test\nall: ml_core\n\nml_core: $(SOURCES) include/MathUtils.h include/MLAlgorithm.h\n\t$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(SOURCES) -o $@\n\nrun: ml_core\n\t./ml_core\n\nclean:\n\trm -f ml_core\n\ntest: ml_core\n\tpython3 tests/check_csv_limits.py\n\tpython3 tests/check_kmeans.py\n\n"
+  },
 };
 
-const ML_ALGORITHM_CODE = `// From include/MLAlgorithm.h (Abstract Base Class)
-#ifndef ML_ALGORITHM_H
-#define ML_ALGORITHM_H
-
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <cmath>
-#include <climits>
-
-class MLAlgorithm {
-protected:
-    enum { MAX_ROWS = 100 };
-    double x[MAX_ROWS], y[MAX_ROWS];
-    int labels[MAX_ROWS];
-    int n;
-
-    // labelMode: 0 = two numeric columns, 1 = SVM, 2 = KNN.
-    bool loadCSV(const char filename[], int minimumRows, int labelMode = 0) {
-        n = 0;
-        std::ifstream file(filename);
-        if (!file) {
-            std::cout << "Unable to open CSV: " << filename << "\\n";
-            return false;
-        }
-        std::string line;
-        int lineNumber = 0, count = 0;
-        while (std::getline(file, line)) {
-            ++lineNumber;
-            if (line.find_first_not_of(" \\t\\r") == std::string::npos)
-                continue;
-            if (count == MAX_ROWS) {
-                std::cout << "Maximum 100 data rows allowed. File rejected.\\n";
-                return false;
-            }
-            std::stringstream row(line);
-            double values[3] = {0, 0, 0};
-            int columns = labelMode == 0 ? 2 : 3;
-            for (int j = 0; j < columns; ++j) {
-                if (!(row >> values[j]) || !std::isfinite(values[j])) {
-                    std::cout << "Invalid or missing number on CSV line "
-                              << lineNumber << ".\\n";
-                    return false;
-                }
-                if (j < columns - 1) {
-                    char comma;
-                    if (!(row >> comma) || comma != ',') {
-                        std::cout << "Expected comma on CSV line "
-                                  << lineNumber << ".\\n";
-                        return false;
-                    }
-                }
-            }
-            row >> std::ws;
-            if (!row.eof()) {
-                std::cout << "Extra data on CSV line " << lineNumber << ".\\n";
-                return false;
-            }
-            if (labelMode != 0) {
-                double label = values[2];
-                if (std::floor(label) != label || label < INT_MIN || label > INT_MAX) {
-                    std::cout << "Class labels must be integers in the int range.\\n";
-                    return false;
-                }
-                if (labelMode == 1 && label != -1 && label != 1) {
-                    std::cout << "SVM labels must be -1 or 1.\\n";
-                    return false;
-                }
-                labels[count] = static_cast<int>(label);
-            }
-            x[count] = values[0];
-            y[count] = values[1];
-            ++count;
-        }
-        if (file.bad()) {
-            std::cout << "Error reading CSV file.\\n";
-            return false;
-        }
-        if (count < minimumRows) {
-            std::cout << "At least " << minimumRows << " data rows required.\\n";
-            return false;
-        }
-        if (labelMode == 1) {
-            bool positive = false, negative = false;
-            for (int i = 0; i < count; ++i) {
-                if (labels[i] == 1) positive = true;
-                if (labels[i] == -1) negative = true;
-            }
-            if (!positive || !negative) {
-                std::cout << "SVM data must contain both classes.\\n";
-                return false;
-            }
-        }
-        n = count;
-        return true;
-    }
-
-public:
-    MLAlgorithm() : n(0) {}
-    virtual ~MLAlgorithm() {}
-    virtual int execute(const char filename[]) = 0;
-};
-
-// Factory functions implemented in each algorithm's source file
-MLAlgorithm& getLinearRegression();
-MLAlgorithm& getKMeans();
-MLAlgorithm& getSVM();
-MLAlgorithm& getHierarchicalClustering();
-MLAlgorithm& getPCA();
-MLAlgorithm& getKNN();
-
-#endif`;
-
-const MATH_UTILS_CODE = `// From include/MathUtils.h
-namespace MathUtils {
-
-inline double mean(const double values[], int n) {
-    double sum = 0;
-    for (int i = 0; i < n; i++) sum += values[i];
-    return sum / n;
-}
-
-inline double squaredDistance(double x1, double y1, double x2, double y2) {
-    double dx = x1 - x2;
-    double dy = y1 - y2;
-    return dx * dx + dy * dy;
-}
-
-inline double euclideanDistance(double x1, double y1, double x2, double y2) {
-    return std::sqrt(squaredDistance(x1, y1, x2, y2));
-}
-
-inline double covariance(const double x[], const double y[], int n) {
-    double meanX = mean(x, n), meanY = mean(y, n);
-    double total = 0;
-    for (int i = 0; i < n; i++) total += (x[i] - meanX) * (y[i] - meanY);
-    return total / (n - 1);
-}
-
-inline bool fitLine(const double x[], const double y[], int n,
-                    double &slope, double &intercept) {
-    if (n < 2) return false;
-    double varX = variance(x, n);
-    if (varX == 0) return false;
-    slope = covariance(x, y, n) / varX;
-    intercept = mean(y, n) - slope * mean(x, n);
-    return true;
-}
-
-inline void updateSVM(double x, double y, int label, double weights[],
-                      double &bias, double learningRate, double lambda) {
-    double features[2] = {x, y};
-    bool insideMargin = label * (weights[0] * x + weights[1] * y + bias) < 1;
-    for (int j = 0; j < 2; j++) {
-        double grad = lambda * weights[j];
-        if (insideMargin) grad -= label * features[j];
-        weights[j] -= learningRate * grad;
-    }
-    if (insideMargin) bias += learningRate * label;
-}
-
-} // namespace MathUtils`;
 
 function renderValidationModal() {
   const isCustom = App.isCustomDataset;
@@ -2909,38 +2525,38 @@ function initModals() {
   });
 
   document.getElementById('btnCodeModal').addEventListener('click', () => {
-    showCodeModal('algo');
+    showCodeModal(App.currentAlgo);
     codeModal.style.display = 'flex';
   });
   document.getElementById('btnCloseCode').addEventListener('click', () => {
     codeModal.style.display = 'none';
   });
 
-  const tabAlgo = document.getElementById('tabAlgoCode');
-  const tabBase = document.getElementById('tabBaseCode');
-  const tabMath = document.getElementById('tabMathCode');
-
-  if (tabAlgo) {
-    tabAlgo.addEventListener('click', (e) => {
-      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-      e.target.classList.add('active');
-      showCodeModal('algo');
+  // C++ Code Component Selector Grid Buttons
+  document.querySelectorAll('.code-component-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.codekey;
+      showCodeModal(key);
     });
-  }
+  });
 
-  if (tabBase) {
-    tabBase.addEventListener('click', (e) => {
-      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-      e.target.classList.add('active');
-      showCodeModal('base');
-    });
-  }
-
-  if (tabMath) {
-    tabMath.addEventListener('click', (e) => {
-      document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-      e.target.classList.add('active');
-      showCodeModal('math');
+  // Copy Code Button
+  const btnCopyCode = document.getElementById('btnCopyCode');
+  if (btnCopyCode) {
+    btnCopyCode.addEventListener('click', () => {
+      const viewer = document.getElementById('codeViewer');
+      if (viewer && viewer.textContent) {
+        navigator.clipboard.writeText(viewer.textContent).then(() => {
+          const btnText = document.getElementById('btnCopyCodeText');
+          if (btnText) btnText.textContent = '✓ Copied!';
+          showToast('C++ source code copied to clipboard!');
+          setTimeout(() => {
+            if (btnText) btnText.textContent = 'Copy Code';
+          }, 2500);
+        }).catch(() => {
+          showToast('Code displayed in viewer.');
+        });
+      }
     });
   }
 
@@ -2951,24 +2567,37 @@ function initModals() {
   });
 }
 
-function showCodeModal(tab) {
-  const viewer = document.getElementById('codeViewer');
+function showCodeModal(key) {
+  const activeKey = key || (BACKEND_CODE_FILES[App.currentAlgo] ? App.currentAlgo : 'linear_regression');
+  const fileData = BACKEND_CODE_FILES[activeKey];
+  if (!fileData) return;
+
+  // Highlight active button in component grid
+  document.querySelectorAll('.code-component-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.codekey === activeKey);
+  });
+
+  // Update Modal Header & Subtitle
   const title = document.getElementById('codeModalTitle');
   const sub = document.getElementById('codeModalSub');
+  if (title) title.textContent = `C++ Implementation: ${fileData.title}`;
+  if (sub) sub.textContent = `Actual backend source code running in ${fileData.path}`;
 
-  if (tab === 'algo') {
-    title.textContent = `C++ Class: ${App.currentAlgo.replace('_', ' ').toUpperCase()}`;
-    sub.textContent = `From src/${App.currentAlgo}.cpp (inherits from MLAlgorithm)`;
-    viewer.textContent = C_CODE_SNIPPETS[App.currentAlgo] || '// C++ snippet';
-  } else if (tab === 'base') {
-    title.textContent = 'include/MLAlgorithm.h (Abstract Base Class)';
-    sub.textContent = 'Base class providing loadCSV(), 100-row limit, column verification & virtual execute()';
-    viewer.textContent = ML_ALGORITHM_CODE;
-  } else {
-    title.textContent = 'include/MathUtils.h';
-    sub.textContent = 'Shared vector, covariance, and distance calculations';
-    viewer.textContent = MATH_UTILS_CODE;
-  }
+  // Update File Meta Bar
+  const pathBadge = document.getElementById('codeFilePathBadge');
+  const descEl = document.getElementById('codeFileDesc');
+  const linesStat = document.getElementById('codeFileLinesStat');
+  const sizeStat = document.getElementById('codeFileSizeStat');
+  const viewer = document.getElementById('codeViewer');
+
+  if (pathBadge) pathBadge.textContent = fileData.path;
+  if (descEl) descEl.textContent = fileData.desc;
+  if (linesStat) linesStat.textContent = fileData.lines;
+  if (sizeStat) sizeStat.textContent = fileData.size;
+  if (viewer) viewer.textContent = fileData.code;
+
+  const btnCopyText = document.getElementById('btnCopyCodeText');
+  if (btnCopyText) btnCopyText.textContent = 'Copy Code';
 }
 
 // ============================================================================
