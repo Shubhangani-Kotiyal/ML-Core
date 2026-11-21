@@ -66,7 +66,7 @@ Then visit [http://localhost:8085](http://localhost:8085) in your browser.
 ## 🌐 Live Internet URL (Public Web Access)
 
 Access the live deployed website instantly from any computer, phone, or browser worldwide:  
-👉 **[https://stunning-taffy-3ed8d5.netlify.app](https://stunning-taffy-3ed8d5.netlify.app)**
+👉 **https://ml-core-visualizer-4419e8.netlify.app**
 
 ---
 
