@@ -85,7 +85,7 @@ Each member should commit their own work with their own Git identity.
 ## Interactive Web Visualizer
 
 The project includes an interactive web dashboard located in `frontend/` that visually demonstrates all six algorithms on an interactive 2D coordinate canvas:
-- **Live Internet URL**: [https://stunning-taffy-3ed8d5.netlify.app](https://stunning-taffy-3ed8d5.netlify.app)
+- **Live Internet URL**: https://ml-core-visualizer-4419e8.netlify.app
 - **Live Algorithm Simulations**: Real-time regression lines and residual errors, K-Means cluster stepping and auto-play, SVM hyperplanes and margin corridors, hierarchical single-linkage agglomeration, PCA 1D projection animations, and KNN neighborhood radar.
 - **Strict CSV Upload**: Upload or paste any custom CSV dataset with full validation mirroring C++ (strict 100-row limit, finite numbers, exact columns per algorithm, and valid label checks).
 - **Verification Dashboard**: Side-by-side C++ vs scikit-learn validation table and full C++ class source code inspector.
