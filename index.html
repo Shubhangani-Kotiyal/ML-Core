@@ -331,18 +331,123 @@
     <div class="modal-card modal-large">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <h3 id="codeModalTitle">C++ Implementation: Linear Regression</h3>
-          <p id="codeModalSub">From <code>src/linear_regression.cpp</code> and <code>include/MathUtils.h</code></p>
+          <h3 id="codeModalTitle">C++ Backend Source Code Explorer</h3>
+          <p id="codeModalSub">Select which C++ module running in the backend you wish to inspect</p>
         </div>
         <button class="modal-close-btn" id="btnCloseCode">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="code-tabs">
-          <button class="code-tab active" id="tabAlgoCode">Algorithm Class</button>
-          <button class="code-tab" id="tabBaseCode">MLAlgorithm.h (Base Class)</button>
-          <button class="code-tab" id="tabMathCode">MathUtils.h</button>
+        
+        <!-- Step 1: Prompt the user to choose which backend code they require -->
+        <div class="code-selector-section">
+          <div class="code-selector-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span>Which C++ backend code do you want to inspect?</span>
+          </div>
+
+          <div class="code-component-grid" id="codeComponentGrid">
+            <!-- 6 Core ML Algorithms in src/ -->
+            <button class="code-component-btn active" data-codekey="linear_regression">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">linear_regression.cpp</span>
+              </div>
+              <span class="code-component-name">Linear Regression</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="kmeans">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">kmeans.cpp</span>
+              </div>
+              <span class="code-component-name">K-Means Clustering</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="svm">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">svm.cpp</span>
+              </div>
+              <span class="code-component-name">Linear SVM</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="hierarchical">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">hierarchical_clustering.cpp</span>
+              </div>
+              <span class="code-component-name">Hierarchical</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="pca">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">pca.cpp</span>
+              </div>
+              <span class="code-component-name">PCA (2D &rarr; 1D)</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="knn">
+              <div class="code-btn-header">
+                <span class="file-badge">SRC</span>
+                <span class="code-component-file">knn.cpp</span>
+              </div>
+              <span class="code-component-name">KNN Classifier</span>
+            </button>
+
+            <!-- Architecture & Infrastructure -->
+            <button class="code-component-btn" data-codekey="menu">
+              <div class="code-btn-header">
+                <span class="file-badge main">MAIN</span>
+                <span class="code-component-file">ml_algorithms_menu.cpp</span>
+              </div>
+              <span class="code-component-name">Polymorphic CLI Menu</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="base">
+              <div class="code-btn-header">
+                <span class="file-badge inc">INC</span>
+                <span class="code-component-file">MLAlgorithm.h</span>
+              </div>
+              <span class="code-component-name">Base Class &amp; CSV Loader</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="math">
+              <div class="code-btn-header">
+                <span class="file-badge inc">INC</span>
+                <span class="code-component-file">MathUtils.h</span>
+              </div>
+              <span class="code-component-name">Shared Math Engine</span>
+            </button>
+
+            <button class="code-component-btn" data-codekey="makefile">
+              <div class="code-btn-header">
+                <span class="file-badge make">BUILD</span>
+                <span class="code-component-file">Makefile</span>
+              </div>
+              <span class="code-component-name">Build Configuration</span>
+            </button>
+          </div>
         </div>
-        <pre class="code-block"><code id="codeViewer">// C++ code will load dynamically</code></pre>
+
+        <!-- Step 2: Selected Code File Metadata & Copy Action -->
+        <div class="code-file-meta-bar">
+          <div class="code-file-meta-left">
+            <span class="code-file-path-badge" id="codeFilePathBadge">src/linear_regression.cpp</span>
+            <span class="code-file-desc" id="codeFileDesc">Least Squares Regression class inheriting from MLAlgorithm</span>
+          </div>
+          <div class="code-file-meta-right">
+            <span class="code-file-stat" id="codeFileLinesStat">67 lines</span>
+            <span class="code-file-stat" id="codeFileSizeStat">1.5 KB</span>
+            <button class="btn-copy-code" id="btnCopyCode" title="Copy C++ source code to clipboard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span id="btnCopyCodeText">Copy Code</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Real C++ Backend Code Display -->
+        <pre class="code-block"><code id="codeViewer">// C++ backend code will load dynamically</code></pre>
       </div>
     </div>
   </div>
