@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML-Core Visualizer — 6 ML Algorithms in C++</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top App Navigation Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">
+        <span class="logo-icon">⚡</span>
+        <div class="logo-text">
+          <span class="logo-title">ML-Core Visualizer</span>
+          <span class="logo-sub">C++ From Scratch &bull; PBL T170</span>
+        </div>
+      </div>
+      <div class="header-pill">Graphic Era Deemed to be University</div>
+    </div>
+
+    <!-- Algorithm Tabs -->
+    <nav class="algo-nav" id="algoNav">
+      <button class="nav-btn active" data-algo="linear_regression">
+        <span class="btn-dot dot-reg"></span>
+        <span class="btn-name">Linear Regression</span>
+      </button>
+      <button class="nav-btn" data-algo="kmeans">
+        <span class="btn-dot dot-kmeans"></span>
+        <span class="btn-name">K-Means</span>
+      </button>
+      <button class="nav-btn" data-algo="svm">
+        <span class="btn-dot dot-svm"></span>
+        <span class="btn-name">Linear SVM</span>
+      </button>
+      <button class="nav-btn" data-algo="hierarchical">
+        <span class="btn-dot dot-hier"></span>
+        <span class="btn-name">Hierarchical</span>
+      </button>
+      <button class="nav-btn" data-algo="pca">
+        <span class="btn-dot dot-pca"></span>
+        <span class="btn-name">PCA (2D &rarr; 1D)</span>
+      </button>
+      <button class="nav-btn" data-algo="knn">
+        <span class="btn-dot dot-knn"></span>
+        <span class="btn-name">KNN</span>
+      </button>
+    </nav>
+
+    <!-- Header Actions -->
+    <div class="header-right">
+      <button class="action-btn upload-btn" id="btnOpenUploadModal" title="Upload and Run Custom CSV Dataset">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Upload CSV</span>
+      </button>
+      <button class="action-btn" id="btnBenchmarkModal" title="View C++ vs Scikit-Learn Benchmarks">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+        <span>Validation</span>
+      </button>
+      <button class="action-btn" id="btnCodeModal" title="Inspect C++ Class Implementation">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        <span>C++ Code</span>
+      </button>
+      <a href="https://github.com/Shubhangani-Kotiyal/PBL-ml-algorithms-in-c" target="_blank" class="github-btn" title="View Source on GitHub">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <main class="app-workspace">
+    
+    <!-- Left: Interactive Canvas Viewport -->
+    <section class="canvas-panel">
+      <!-- Canvas Header Bar with Algorithm Context -->
+      <div class="panel-header">
+        <div class="algo-identity">
+          <span class="algo-tag" id="algoCategoryTag">SUPERVISED</span>
+          <h2 class="algo-title" id="algoTitle">Linear Regression</h2>
+        </div>
+        <div class="viewport-hints">
+          <span class="hint-pill" id="viewportTip">💡 Click on canvas to add points or drag query marker</span>
+        </div>
+        <div class="canvas-actions">
+          <button class="tool-btn highlight-tool" id="btnCanvasUpload" title="Upload Custom CSV Dataset">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Upload CSV</span>
+          </button>
+          <button class="tool-btn active" id="btnToggleAddPoint" title="Toggle Click-to-Add Points">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add Point</span>
+          </button>
+          <button class="tool-btn" id="btnResetDataset" title="Reset to Repository CSV Dataset">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.3"/></svg>
+            <span>Reset CSV</span>
+          </button>
+          <button class="tool-btn" id="btnClearPoints" title="Clear all points">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Custom Dataset Active Banner -->
+      <div class="custom-dataset-banner" id="customDatasetBanner" style="display: none;">
+        <div class="custom-banner-left">
+          <span class="custom-banner-badge">CUSTOM DATASET ACTIVE</span>
+          <span class="custom-banner-text" id="customBannerText">Loaded 0 rows &bull; Replaced default repository CSV</span>
+        </div>
+        <button class="custom-banner-btn" id="btnRestoreFromBanner" title="Restore default repository CSV">
+          Restore Default Dataset
+        </button>
+      </div>
+
+      <!-- Main Interactive 2D Canvas Area -->
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="mainCanvas"></canvas>
+        <div class="canvas-overlay" id="canvasOverlay"></div>
+        <div class="canvas-legend" id="canvasLegend"></div>
+      </div>
+
+      <!-- Step / Animation Playback Controller (for K-Means & Hierarchical) -->
+      <div class="playback-bar" id="playbackBar" style="display: none;">
+        <div class="playback-left">
+          <span class="playback-status" id="playbackStatus">Step 0 / 10</span>
+          <span class="playback-desc" id="playbackDesc">Ready to start clustering iterations</span>
+        </div>
+        <div class="playback-controls">
+          <button class="step-btn" id="btnStepPrev" title="Previous Step">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+            <span>Prev</span>
+          </button>
+          <button class="step-btn primary-step" id="btnStepNext" title="Next Iteration Step">
+            <span>Next Step</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+          </button>
+          <button class="step-btn" id="btnPlayAuto" title="Auto-run iterations">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span id="playAutoText">Auto Play</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Controls, Telemetry & Math Cards -->
+    <aside class="control-panel">
+      
+      <!-- Interactive Controls Card -->
+      <div class="glass-card">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Parameters &amp; Probe</span>
+        </div>
+        <div class="card-body" id="dynamicControls">
+          <!-- Dynamically populated based on selected algorithm -->
+        </div>
+      </div>
+
+      <!-- Live Calculations & Telemetry Card -->
+      <div class="glass-card">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          <span>Live Metrics (C++ Math)</span>
+        </div>
+        <div class="metrics-grid" id="metricsGrid">
+          <!-- Dynamically populated metrics -->
+        </div>
+      </div>
+
+      <!-- Mathematical Formulation Card -->
+      <div class="glass-card">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
+          <span>Mathematical Formulation</span>
+        </div>
+        <div class="formula-box" id="formulaBox">
+          <!-- Rendered mathematical formula -->
+        </div>
+      </div>
+
+      <!-- Team Badge Card -->
+      <div class="team-footer-card">
+        <div class="team-badge-header">
+          <span class="project-tag">PROJECT-BASED LEARNING</span>
+          <span class="dept-tag">GEU &bull; CSE</span>
+        </div>
+        <div class="team-members">
+          <div class="member-pill"><strong>Shubhangani Kotiyal</strong> (Lead)</div>
+          <div class="member-pill"><strong>Ishanaya Agarwal</strong></div>
+          <div class="member-pill"><strong>Harshita Joshi</strong></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- MODAL: C++ vs Scikit-Learn Validation -->
+  <div class="modal-backdrop" id="benchmarkModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3>C++ From Scratch vs Python Scikit-Learn</h3>
+          <p>Smoke test and validation results recorded in <code>results/sample_checks.md</code></p>
+        </div>
+        <button class="modal-close-btn" id="btnCloseBenchmark">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Test Input</th>
+              <th>C++ (From Scratch)</th>
+              <th>Python (scikit-learn 1.8.0)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Linear Regression</strong></td>
+              <td>Query x = 7.0</td>
+              <td><code>13.2667</code> (MSE: 0.184127)</td>
+              <td><code>13.2666667</code> (MSE: 0.184126984)</td>
+              <td><span class="tag-match">Exact Match</span></td>
+            </tr>
+            <tr>
+              <td><strong>K-Means Clustering</strong></td>
+              <td>K = 2</td>
+              <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
+              <td><code>(1.75, 1.625), (5.75, 5.625)</code></td>
+              <td><span class="tag-match">Exact Match</span></td>
+            </tr>
+            <tr>
+              <td><strong>Linear SVM</strong></td>
+              <td>Point (2, 2)</td>
+              <td>Class +1 (8/8 train accuracy)</td>
+              <td>Class +1 (1.0 train accuracy)</td>
+              <td><span class="tag-match">Consistent</span></td>
+            </tr>
+            <tr>
+              <td><strong>Hierarchical Clustering</strong></td>
+              <td>2 Clusters</td>
+              <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
+              <td>Group 1: {1,2,3}, Group 2: {4,5,6}</td>
+              <td><span class="tag-match">Exact Match</span></td>
+            </tr>
+            <tr>
+              <td><strong>PCA (2D &rarr; 1D)</strong></td>
+              <td>Full covariance</td>
+              <td>Explained Variance Ratio: <code>0.963181</code></td>
+              <td>Explained Variance Ratio: <code>0.963181314</code></td>
+              <td><span class="tag-match">Exact Match</span></td>
+            </tr>
+            <tr>
+              <td><strong>KNN Classifier</strong></td>
+              <td>K = 3, Point (2, 2)</td>
+              <td>Class 0 (3/3 votes)</td>
+              <td>Class 0</td>
+              <td><span class="tag-match">Exact Match</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="benchmark-note">
+          <p><strong>Note on Solvers:</strong> Both implementations verify identical convergence and group assignments. Minor numeric variations in SVM arise because C++ utilizes direct stochastic hinge-loss subgradient descent with L2 regularization, while scikit-learn uses LibSVM quadratic programming dual optimization.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: C++ Source Code Inspector -->
+  <div class="modal-backdrop" id="codeModal" style="display: none;">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3 id="codeModalTitle">C++ Implementation: Linear Regression</h3>
+          <p id="codeModalSub">From <code>src/linear_regression.cpp</code> and <code>include/MathUtils.h</code></p>
+        </div>
+        <button class="modal-close-btn" id="btnCloseCode">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="code-tabs">
+          <button class="code-tab active" id="tabAlgoCode">Algorithm Class</button>
+          <button class="code-tab" id="tabMathCode">MathUtils.h</button>
+        </div>
+        <pre class="code-block"><code id="codeViewer">// C++ code will load dynamically</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Upload Custom CSV Dataset -->
+  <div class="modal-backdrop" id="uploadModal" style="display: none;">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3>Upload &amp; Run Custom CSV Dataset</h3>
+          <p>Import your own CSV file or paste data. The new dataset will replace the original and run the selected algorithm immediately.</p>
+        </div>
+        <button class="modal-close-btn" id="btnCloseUpload">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Step 1: Input Method Tabs -->
+        <div class="upload-tabs">
+          <button class="upload-tab active" id="tabUploadFile">📁 Upload CSV File</button>
+          <button class="upload-tab" id="tabPasteText">✍️ Paste CSV Text</button>
+          <button class="upload-tab" id="tabLoadSample">🧪 Try Sample CSV</button>
+        </div>
+
+        <!-- File Upload Area -->
+        <div class="upload-section" id="sectionUploadFile">
+          <div class="dropzone" id="csvDropzone">
+            <input type="file" id="csvFileInput" accept=".csv,.txt" style="display: none;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropzone-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <div class="dropzone-text">
+              <strong>Click to browse</strong> or drag &amp; drop your CSV file here
+            </div>
+            <div class="dropzone-sub">Accepts .csv or .txt (comma or whitespace separated, with or without headers)</div>
+          </div>
+          <div class="file-loaded-info" id="fileLoadedInfo" style="display: none;">
+            <div class="file-info-left">
+              <span class="file-icon">📄</span>
+              <div class="file-details">
+                <span class="file-name" id="fileNameDisplay">dataset.csv</span>
+                <span class="file-stat" id="fileStatDisplay">0 rows parsed</span>
+              </div>
+            </div>
+            <button class="file-remove-btn" id="btnRemoveFile">Change File</button>
+          </div>
+        </div>
+
+        <!-- Paste CSV Text Area -->
+        <div class="upload-section" id="sectionPasteText" style="display: none;">
+          <textarea class="csv-textarea" id="csvTextInput" placeholder="Paste your comma or space separated numbers here...&#10;Example for Regression / Clustering / PCA:&#10;1.2, 3.4&#10;2.5, 5.1&#10;4.0, 7.8&#10;&#10;Example for SVM / KNN (with labels):&#10;1.5, 2.0, 1&#10;-2.0, -1.5, -1"></textarea>
+          <div class="paste-actions">
+            <button class="btn-parse-text" id="btnParseText">Parse CSV Text</button>
+          </div>
+        </div>
+
+        <!-- Sample CSV Presets -->
+        <div class="upload-section" id="sectionLoadSample" style="display: none;">
+          <div class="sample-grid">
+            <button class="sample-card-btn" data-sample="housing">
+              <span class="sample-title">🏡 House Size vs Price</span>
+              <span class="sample-desc">10 rows (x: sqft/100, y: price) for Linear Regression</span>
+            </button>
+            <button class="sample-card-btn" data-sample="blobs">
+              <span class="sample-title">🟢 Synthetic 3-Cluster Blobs</span>
+              <span class="sample-desc">12 rows (x, y) for K-Means or Hierarchical Clustering</span>
+            </button>
+            <button class="sample-card-btn" data-sample="classification">
+              <span class="sample-title">⚖️ 2-Class Labeled Points</span>
+              <span class="sample-desc">10 rows (x, y, label) for SVM or KNN</span>
+            </button>
+            <button class="sample-card-btn" data-sample="pca_ellipse">
+              <span class="sample-title">📐 Correlated Ellipse Distribution</span>
+              <span class="sample-desc">12 rows (x, y) demonstrating 97% variance for PCA</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Choose Algorithm -->
+        <div class="modal-section-title">
+          <span>What algorithm do you want to perform on this dataset?</span>
+          <span class="title-tip">Click to select</span>
+        </div>
+        <div class="algo-selection-grid" id="uploadAlgoGrid">
+          <div class="algo-choice-card active" data-algo="linear_regression">
+            <div class="choice-header">
+              <span class="choice-dot dot-reg"></span>
+              <span class="choice-name">Linear Regression</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y</code> (2 columns)</div>
+          </div>
+          <div class="algo-choice-card" data-algo="kmeans">
+            <div class="choice-header">
+              <span class="choice-dot dot-kmeans"></span>
+              <span class="choice-name">K-Means</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y</code> (2 coordinates)</div>
+          </div>
+          <div class="algo-choice-card" data-algo="svm">
+            <div class="choice-header">
+              <span class="choice-dot dot-svm"></span>
+              <span class="choice-name">Linear SVM</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y, label (-1 or +1)</code></div>
+          </div>
+          <div class="algo-choice-card" data-algo="hierarchical">
+            <div class="choice-header">
+              <span class="choice-dot dot-hier"></span>
+              <span class="choice-name">Hierarchical</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y</code> (2 coordinates)</div>
+          </div>
+          <div class="algo-choice-card" data-algo="pca">
+            <div class="choice-header">
+              <span class="choice-dot dot-pca"></span>
+              <span class="choice-name">PCA (2D &rarr; 1D)</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y</code> (2 features)</div>
+          </div>
+          <div class="algo-choice-card" data-algo="knn">
+            <div class="choice-header">
+              <span class="choice-dot dot-knn"></span>
+              <span class="choice-name">KNN</span>
+            </div>
+            <div class="choice-req">Requires <code>x, y, label (class 0, 1...)</code></div>
+          </div>
+        </div>
+
+        <!-- Step 3: Parsed Data Preview -->
+        <div class="data-preview-container" id="dataPreviewContainer" style="display: none;">
+          <div class="preview-header">
+            <span class="preview-title" id="previewTitle">Parsed Data Preview (0 rows ready)</span>
+            <span class="preview-badge" id="previewValidationBadge">Valid for Selected Algorithm</span>
+          </div>
+          <div class="preview-table-wrap">
+            <table class="preview-table" id="previewTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="modal-cancel-btn" id="btnCancelUpload">Cancel</button>
+        <button class="modal-apply-btn" id="btnApplyDataset" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Load &amp; Run Algorithm on New Dataset</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Popup -->
+  <div class="toast-popup" id="toastPopup" style="display: none;">
+    <span class="toast-icon">✓</span>
+    <span class="toast-message" id="toastMessage">Custom dataset applied successfully!</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
