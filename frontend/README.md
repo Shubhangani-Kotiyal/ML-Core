@@ -66,7 +66,7 @@ Then visit [http://localhost:8085](http://localhost:8085) in your browser.
 ## 🌐 Live Internet URL (Public Web Access)
 
 Access the live deployed website instantly from any computer, phone, or browser worldwide:  
-👉 **https://ml-core-visualizer-4419e8.netlify.app**
+👉 **https://ml-core-visualization-a24b68.netlify.app**
 
 ---
 
