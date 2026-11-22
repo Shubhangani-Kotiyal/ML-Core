@@ -290,8 +290,8 @@
               <tr>
                 <td><strong>Linear SVM</strong></td>
                 <td>Point (2, 2)</td>
-                <td>Class +1 (8/8 train accuracy)</td>
-                <td>Class +1 (1.0 train accuracy)</td>
+                <td>Class +1 (Toy 8/8 = 100%; Realistic Soft-Margin 7/8 = 87.5%)</td>
+                <td>Class +1 (1.0 separable / 0.875 regularized)</td>
                 <td><span class="tag-match">Consistent</span></td>
               </tr>
               <tr>
@@ -318,7 +318,7 @@
             </tbody>
           </table>
           <div class="benchmark-note">
-            <p><strong>Note on Solvers:</strong> Both implementations verify identical convergence and group assignments. Minor numeric variations in SVM arise because C++ utilizes direct stochastic hinge-loss subgradient descent with L2 regularization, while scikit-learn uses LibSVM quadratic programming dual optimization.</p>
+            <p><strong>Note on Solvers &amp; Overfitting:</strong> Both implementations verify identical convergence and group assignments. Minor numeric variations in SVM arise because C++ utilizes direct stochastic hinge-loss subgradient descent with L2 regularization (&lambda;), while scikit-learn uses LibSVM quadratic programming dual optimization. On the separable toy dataset, both models report 100% training accuracy, which indicates high variance and zero margin slack (overfitting). Under the realistic soft-margin preset with boundary noise and &lambda;=0.05, accuracy is 87.5% with controlled variance.</p>
           </div>
         </div>
 

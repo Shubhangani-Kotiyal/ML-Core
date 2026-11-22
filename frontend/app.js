@@ -35,6 +35,16 @@ const DATASETS = {
     { x: 2, y: 1, label: 1 },
     { x: 2, y: 3, label: 1 },
     { x: 3, y: 2, label: 1 },
+    { x: -0.5, y: -0.8, label: 1 } // Realistic boundary noise: soft-margin slack prevents overfitting
+  ],
+  svm_toy: [
+    { x: -3, y: -2, label: -1 },
+    { x: -2, y: -3, label: -1 },
+    { x: -2, y: -1, label: -1 },
+    { x: -1, y: -2, label: -1 },
+    { x: 2, y: 1, label: 1 },
+    { x: 2, y: 3, label: 1 },
+    { x: 3, y: 2, label: 1 },
     { x: 1, y: 2, label: 1 }
   ],
   hierarchical: [
@@ -129,7 +139,7 @@ const MathUtils = {
   },
 
   // Train Linear SVM (Hinge loss + L2 regularization)
-  trainSVM(points, epochs = 2000, lr = 0.001, lambda = 0.01) {
+  trainSVM(points, epochs = 2000, lr = 0.001, lambda = 0.05) {
     let w = [0, 0];
     let b = 0;
 
@@ -216,6 +226,8 @@ const App = {
   },
   svm: {
     queryPoint: { x: 2.0, y: 2.0 },
+    lambda: 0.05,
+    preset: 'realistic',
     model: null
   },
   hierarchical: {
@@ -824,7 +836,8 @@ function drawKMeans(ctx) {
 // 3. Linear Support Vector Machine (SVM) Visualizer
 // ============================================================================
 function drawSVM(ctx) {
-  const model = MathUtils.trainSVM(App.points);
+  const lambda = (App.svm && typeof App.svm.lambda === 'number') ? App.svm.lambda : 0.05;
+  const model = MathUtils.trainSVM(App.points, 2000, 0.001, lambda);
   App.svm.model = model;
   const { minX, maxX, minY, maxY } = App.bounds;
   const w = model.weights;
@@ -1323,7 +1336,19 @@ function updateDynamicControls() {
       </div>
     `;
   } else if (algo === 'svm') {
+    const curLambda = (App.svm && typeof App.svm.lambda === 'number') ? App.svm.lambda : 0.05;
+    const curPreset = (App.svm && App.svm.preset) ? App.svm.preset : 'realistic';
     html = `
+      <div class="ctrl-row">
+        <div class="ctrl-header">
+          <span>L2 Regularization (&lambda;)</span>
+          <span class="ctrl-val" id="valSVMLambda">${curLambda.toFixed(3)}</span>
+        </div>
+        <input type="range" class="range-slider" id="svmLambdaSlider" min="0.005" max="0.200" step="0.005" value="${curLambda}">
+        <span style="font-size: 10px; color: var(--text-dim); margin-top: 3px; display: block; line-height: 1.3;">
+          Widens margin corridor (2/||w||) and prevents 100% memorization overfitting.
+        </span>
+      </div>
       <div class="ctrl-row">
         <div class="ctrl-header">
           <span>Test Point X</span>
@@ -1338,8 +1363,18 @@ function updateDynamicControls() {
         </div>
         <input type="range" class="range-slider" id="svmYSlider" min="-4" max="4" step="0.2" value="${App.svm.queryPoint.y}">
       </div>
-      <div class="btn-group">
-        <button class="group-btn active" id="btnPresetSVM">Repo CSV (Linearly Separable)</button>
+      <div class="ctrl-header" style="margin-top: 10px; margin-bottom: 6px;">
+        <span>Dataset Presets &amp; Overfitting Test</span>
+      </div>
+      <div class="btn-group" style="display: flex; flex-direction: column; gap: 6px;">
+        <button class="group-btn ${curPreset === 'realistic' ? 'active' : ''}" id="btnSVMRealistic" style="text-align: left; padding: 8px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+          <span>✓ Realistic (Soft-Margin Noise)</span>
+          <span style="color: #34d399; font-weight: 700;">87.5% Acc</span>
+        </button>
+        <button class="group-btn ${curPreset === 'toy' ? 'active' : ''}" id="btnSVMToy" style="text-align: left; padding: 8px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+          <span>⚠️ Toy Set (Linearly Separable)</span>
+          <span style="color: #fbbf24; font-weight: 700;">100% Acc Overfit</span>
+        </button>
       </div>
     `;
   } else if (algo === 'hierarchical') {
@@ -1412,18 +1447,58 @@ function bindDynamicEvents() {
       });
     }
   } else if (algo === 'svm') {
+    const lamSlider = document.getElementById('svmLambdaSlider');
+    if (lamSlider) {
+      lamSlider.addEventListener('input', (e) => {
+        App.svm.lambda = parseFloat(e.target.value);
+        const valElem = document.getElementById('valSVMLambda');
+        if (valElem) valElem.textContent = App.svm.lambda.toFixed(3);
+        recalculateAndRender();
+      });
+    }
+
     const sx = document.getElementById('svmXSlider');
     const sy = document.getElementById('svmYSlider');
     if (sx && sy) {
       sx.addEventListener('input', (e) => {
         App.svm.queryPoint.x = parseFloat(e.target.value);
-        document.getElementById('valSVMX').textContent = App.svm.queryPoint.x;
+        const vx = document.getElementById('valSVMX');
+        if (vx) vx.textContent = App.svm.queryPoint.x;
         recalculateAndRender();
       });
       sy.addEventListener('input', (e) => {
         App.svm.queryPoint.y = parseFloat(e.target.value);
-        document.getElementById('valSVMY').textContent = App.svm.queryPoint.y;
+        const vy = document.getElementById('valSVMY');
+        if (vy) vy.textContent = App.svm.queryPoint.y;
         recalculateAndRender();
+      });
+    }
+
+    const btnReal = document.getElementById('btnSVMRealistic');
+    if (btnReal) {
+      btnReal.addEventListener('click', () => {
+        App.svm.preset = 'realistic';
+        App.isCustomDataset = false;
+        App.customDatasetName = '';
+        App.points = JSON.parse(JSON.stringify(DATASETS.svm));
+        autoScaleBounds(App.points);
+        updateDynamicControls();
+        recalculateAndRender();
+        showToast('Loaded Realistic Soft-Margin Dataset (87.5% Acc).');
+      });
+    }
+
+    const btnToy = document.getElementById('btnSVMToy');
+    if (btnToy) {
+      btnToy.addEventListener('click', () => {
+        App.svm.preset = 'toy';
+        App.isCustomDataset = false;
+        App.customDatasetName = '';
+        App.points = JSON.parse(JSON.stringify(DATASETS.svm_toy));
+        autoScaleBounds(App.points);
+        updateDynamicControls();
+        recalculateAndRender();
+        showToast('Loaded Toy Separable Dataset (100% Acc Overfitting Warning).');
       });
     }
   } else if (algo === 'hierarchical') {
@@ -1544,18 +1619,33 @@ function updateMetricsGrid() {
       </div>
     `;
   } else if (algo === 'svm') {
-    const model = App.svm.model || MathUtils.trainSVM(App.points);
+    const lambda = (App.svm && typeof App.svm.lambda === 'number') ? App.svm.lambda : 0.05;
+    const model = App.svm.model || MathUtils.trainSVM(App.points, 2000, 0.001, lambda);
     const w = model.weights;
     const b = model.bias;
     const norm = Math.hypot(w[0], w[1]);
     const margin = norm > 0 ? (2 / norm) : 0;
 
     let correct = 0;
+    let totalSlack = 0;
     App.points.forEach(p => {
       const s = w[0] * p.x + w[1] * p.y + b;
       if ((s >= 0 ? 1 : -1) === p.label) correct++;
+      const slack = Math.max(0, 1 - p.label * s);
+      totalSlack += slack;
     });
     const acc = App.points.length > 0 ? (correct / App.points.length) * 100 : 0;
+    const isOverfit = acc >= 99.9;
+    const accColor = isOverfit ? '#fbbf24' : (acc >= 80 ? '#34d399' : '#38bdf8');
+    const accStatus = isOverfit
+      ? `⚠️ Overfitting Risk (${correct}/${App.points.length})`
+      : `✓ Controlled Variance (${correct}/${App.points.length})`;
+
+    const riskColor = isOverfit ? '#fbbf24' : (acc >= 80 ? '#34d399' : '#38bdf8');
+    const riskLabel = isOverfit ? 'High (Zero Slack)' : (acc >= 80 ? 'Low / Generalized' : 'Underfitting');
+    const riskSub = isOverfit
+      ? 'Memorized toy data with zero margin tolerance'
+      : `Slack Σξ = ${totalSlack.toFixed(2)} (Soft-margin noise tolerance)`;
 
     html = `
       <div class="metric-item">
@@ -1569,14 +1659,24 @@ function updateMetricsGrid() {
         <span class="metric-sub">Intercept offset</span>
       </div>
       <div class="metric-item">
-        <span class="metric-label">Margin Width</span>
+        <span class="metric-label">Margin Corridor (2 / ||w||)</span>
         <span class="metric-value">${margin.toFixed(3)}</span>
-        <span class="metric-sub">2 / ||w||</span>
+        <span class="metric-sub">L2 Regularization λ = ${lambda.toFixed(3)}</span>
       </div>
       <div class="metric-item">
         <span class="metric-label">Train Accuracy</span>
-        <span class="metric-value" style="color: #34d399;">${acc.toFixed(0)}%</span>
-        <span class="metric-sub">${correct}/${App.points.length} Classified</span>
+        <span class="metric-value" style="color: ${accColor};">${acc.toFixed(1)}%</span>
+        <span class="metric-sub" style="color: ${accColor}; font-weight: 500;">${accStatus}</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Overfitting Risk</span>
+        <span class="metric-value" style="color: ${riskColor}; font-size: 15px;">${riskLabel}</span>
+        <span class="metric-sub">${riskSub}</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Margin Slack &amp; Hinge Penalty</span>
+        <span class="metric-value">Σξ = ${totalSlack.toFixed(2)}</span>
+        <span class="metric-sub">min ½||w||² + (1/λ)Σξ</span>
       </div>
     `;
   } else if (algo === 'hierarchical') {
@@ -1689,7 +1789,8 @@ function updateFormulaCard() {
     box.innerHTML = `
       <div><span class="formula-highlight">Decision Rule:</span> f(x) = sign(w · x + b)</div>
       <div><span class="formula-highlight">Hinge Loss:</span> max(0, 1 - yᵢ(w · xᵢ + b))</div>
-      <div><span class="formula-highlight">L2 Gradient:</span> ∇w = λw - yᵢxᵢ (if active)</div>
+      <div><span class="formula-highlight">Soft-Margin Objective:</span> min ½λ||w||² + Σξᵢ (Prevents Overfitting)</div>
+      <div><span class="formula-highlight">Margin Corridor:</span> 2 / ||w|| (Controlled Variance)</div>
     `;
   } else if (algo === 'hierarchical') {
     box.innerHTML = `
@@ -1851,6 +1952,8 @@ function switchAlgorithm(algoKey, keepCustomDataset = false) {
     if (algoKey === 'svm') {
       App.bounds = { minX: -4, maxX: 4, minY: -4, maxY: 4 };
       App.svm.queryPoint = { x: 2.0, y: 2.0 };
+      App.svm.preset = App.svm.preset || 'realistic';
+      App.svm.lambda = (typeof App.svm.lambda === 'number') ? App.svm.lambda : 0.05;
     } else if (algoKey === 'pca') {
       App.bounds = { minX: 0, maxX: 4, minY: 0, maxY: 4 };
     } else if (algoKey === 'linear_regression') {
@@ -1888,7 +1991,12 @@ function switchAlgorithm(algoKey, keepCustomDataset = false) {
 }
 
 function loadDefaultDataset(algoKey) {
-  App.points = JSON.parse(JSON.stringify(DATASETS[algoKey]));
+  if (algoKey === 'svm') {
+    const preset = (App.svm && App.svm.preset) ? App.svm.preset : 'realistic';
+    App.points = JSON.parse(JSON.stringify(preset === 'toy' ? DATASETS.svm_toy : DATASETS.svm));
+  } else {
+    App.points = JSON.parse(JSON.stringify(DATASETS[algoKey]));
+  }
   App.isCustomDataset = false;
 }
 
@@ -2224,21 +2332,25 @@ function renderValidationModal() {
       </tr>
     `;
   } else if (algo === 'svm') {
-    const model = App.svm.model || MathUtils.trainSVM(App.points);
+    const lambda = (App.svm && typeof App.svm.lambda === 'number') ? App.svm.lambda : 0.05;
+    const model = App.svm.model || MathUtils.trainSVM(App.points, 2000, 0.001, lambda);
     const w = model.weights;
     const b = model.bias;
     const norm = Math.hypot(w[0], w[1]);
     const margin = norm > 0 ? (2 / norm) : 0;
 
     let correct = 0;
+    let totalSlack = 0;
     let posCount = 0, negCount = 0;
     App.points.forEach(p => {
       if (p.label === 1) posCount++;
       if (p.label === -1) negCount++;
       const s = w[0] * p.x + w[1] * p.y + b;
       if ((s >= 0 ? 1 : -1) === p.label) correct++;
+      totalSlack += Math.max(0, 1 - p.label * s);
     });
     const acc = App.points.length > 0 ? (correct / App.points.length) * 100 : 0;
+    const isOverfit = acc >= 99.9;
     const qScore = w[0] * App.svm.queryPoint.x + w[1] * App.svm.queryPoint.y + b;
     const qClass = qScore >= 0 ? 1 : -1;
 
@@ -2256,13 +2368,13 @@ function renderValidationModal() {
         </div>
         <div class="val-card">
           <span class="val-card-label">Train Accuracy</span>
-          <span class="val-card-val" style="color: #34d399;">${acc.toFixed(1)}%</span>
-          <span class="val-card-sub">${correct}/${App.points.length} Correct</span>
+          <span class="val-card-val" style="color: ${isOverfit ? '#fbbf24' : '#34d399'};">${acc.toFixed(1)}%</span>
+          <span class="val-card-sub">${correct}/${App.points.length} Classified</span>
         </div>
         <div class="val-card">
-          <span class="val-card-label">Margin Corridor</span>
-          <span class="val-card-val">${margin.toFixed(3)}</span>
-          <span class="val-card-sub">2 / ||w||</span>
+          <span class="val-card-label">Overfitting Risk</span>
+          <span class="val-card-val" style="color: ${isOverfit ? '#fbbf24' : '#34d399'}; font-size: 14px;">${isOverfit ? 'High (Zero Slack)' : 'Low (Regularized)'}</span>
+          <span class="val-card-sub">Corridor 2/||w|| = ${margin.toFixed(3)}</span>
         </div>
       </div>
     `;
@@ -2284,7 +2396,13 @@ function renderValidationModal() {
         <td><strong>Training Accuracy</strong></td>
         <td><code>Hinge loss subgradient descent</code></td>
         <td><code>${correct} / ${App.points.length} samples correctly classified (${acc.toFixed(1)}%)</code></td>
-        <td><span class="tag-match">${acc >= 90 ? 'High Accuracy' : 'Verified'}</span></td>
+        <td><span class="${isOverfit ? 'tag-warn' : 'tag-match'}">${isOverfit ? '100% Memorized' : 'Optimal Generalized'}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Overfitting &amp; Slack Analysis</strong></td>
+        <td><code>min ½λ||w||² + Σ max(0, 1 - yᵢ(w·xᵢ+b))</code></td>
+        <td><code>Margin slack Σξ = ${totalSlack.toFixed(2)} | λ = ${lambda.toFixed(3)} (${isOverfit ? 'Zero margin tolerance indicates high overfitting risk' : 'Controlled variance prevents overfitting to outliers'})</code></td>
+        <td><span class="${isOverfit ? 'tag-warn' : 'tag-match'}">${isOverfit ? 'Overfit Risk' : 'Controlled'}</span></td>
       </tr>
       <tr>
         <td><strong>Query Probe (${App.svm.queryPoint.x}, ${App.svm.queryPoint.y})</strong></td>
