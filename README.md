@@ -56,10 +56,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch purposes and commands. Every w
 
 ## Reports and presentations
 
-- reports/phase1/: report source and PDF.
-- reports/phase2/: report PDF.
-- reports/phase3/: placeholder; Phase 3 report still needs uploading.
-- presentations/phase1/: Phase 1 source and PDF; later presentations still need uploading.
+- reports/phase1/: Phase 1 report source and PDF.
+- reports/phase2/: Phase 2 report source and PDF.
+- reports/phase3/: Phase 3 report source and PDF.
+- presentations/phase1/: Currently contains the sources and PDFs for all three presentations.
 
 ## Team
 
